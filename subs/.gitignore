@@ -5,6 +5,9 @@
 *.hdf
 *.h5
 
+*.f90
+*.py
+
 # Compiled Object files
 *.slo
 *.lo

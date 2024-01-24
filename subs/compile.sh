@@ -1,0 +1,1 @@
+gfortran sub_read_msg_iodc_clm.f90 -I/home/jihenghu/netcdf/include -I/home/jihenghu/hdf5/include -L/home/jihenghu/netcdf/lib -lnetcdff -lnetcdf  -L/home/jihenghu/hdf5/lib -lhdf5_fortran -L/home/jihenghu/eccodes/lib64  -leccodes_f90 -leccodes  -I/home/jihenghu/eccodes/include
