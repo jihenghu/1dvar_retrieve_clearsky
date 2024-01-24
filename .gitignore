@@ -1,6 +1,13 @@
 # Prerequisites
 *.d
 
+*.nc
+*.hdf
+*.h5
+filelists/*.txt
+logs/*
+subs/*
+
 # Compiled Object files
 *.slo
 *.lo
