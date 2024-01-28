@@ -5,7 +5,7 @@
 
 
 subroutine retrieve_core_1dvar(imonth,longitude,latitude,&
-		TBobs,Tatm,QWatm,LST,T2m,Snowc,Smc,Psrf,EmissAnalyt,Emiss1st,Em1DVar,LstTune)
+		TBobs,Tatm,QWatm,LST,T2m,Snowc,Smc,SfcPress,EmissAnalyt,Emiss1st,Em1DVar,LstTune,nIters)
 
 
 integer,					parameter 	:: nlevel=29
@@ -26,7 +26,7 @@ integer,					intent(IN)	:: imonth
 real,  						intent(IN)	:: longitude,latitude
 real, 	dimension(nchannel),intent(IN) 	:: TBobs
 real, 	dimension(nlevel), 	intent(IN)	:: Tatm,QWatm
-real, 						intent(IN)	:: LST,T2m,Snowc,Smc,Psrf
+real, 						intent(IN)	:: LST,T2m,Snowc,Smc,SfcPress
 
 real, 	dimension(nchannel),intent(OUT)	:: EmissAnalyt,Em1DVar,Emiss1st,LstTune
 
@@ -37,8 +37,66 @@ real, 		dimension(nlevel,nEOF)		:: UQw, UTa
 
 !! cov in EOF space
 real, 		dimension(nEOF,nEOF)		:: LambdaQw,LambdaTa
-
+!! TB and EMissivity
+real, dimension(9,9)  					:: LambdaEM  !! 0.25*0.25
+real, dimension(9,9)  					:: LambdaTB  !! NEDT*NEDT
+real, dimension(9,9)					:: Uem, UTB
+!! Total tranform EigenVectorMatrix and EigenValueMatrix
+real, dimension(68,26)      			:: Utotal
+REAL, dimension(26,26)					:: Lambda
 integer :: file_unit
+
+INTEGER ::  nLayEff
+INTEGER ::  iter, nIters
+
+
+
+
+
+! 0.25*0.25
+! LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
+! LambdaEM(2,:)=(/0.,0.0625,0.,0.,0.,0.,0.,0.,0./)
+! LambdaEM(3,:)=(/0.,0.,0.0625,0.,0.,0.,0.,0.,0./)
+! LambdaEM(4,:)=(/0.,0.,0.,0.0625,0.,0.,0.,0.,0./)
+! LambdaEM(5,:)=(/0.,0.,0.,0.,0.0625,0.,0.,0.,0./)
+! LambdaEM(6,:)=(/0.,0.,0.,0.,0.,0.0625,0.,0.,0./)
+! LambdaEM(7,:)=(/0.,0.,0.,0.,0.,0.,0.0625,0.,0./)
+! LambdaEM(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.0625,0./)
+! LambdaEM(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.0625/)
+
+! NEDT*NEDT
+! LambdaTB(1,:)=(/0.77,0.,0.,0.,0.,0.,0.,0.,0./)
+! LambdaTB(2,:)=(/0.,0.78,0.,0.,0.,0.,0.,0.,0./)
+! LambdaTB(3,:)=(/0.,0.,0.63,0.,0.,0.,0.,0.,0./)
+! LambdaTB(4,:)=(/0.,0.,0.,0.60,0.,0.,0.,0.,0./)
+! LambdaTB(5,:)=(/0.,0.,0.,0.,0.51,0.,0.,0.,0./)
+! LambdaTB(6,:)=(/0.,0.,0.,0.,0.,0.41,0.,0.,0./)
+! LambdaTB(7,:)=(/0.,0.,0.,0.,0.,0.,0.42,0.,0./)
+! LambdaTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.32,0./)
+! LambdaTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.31/)
+
+
+!! transform matrix
+! Uem(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
+! Uem(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
+! Uem(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
+! Uem(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
+! Uem(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
+! Uem(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
+! Uem(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
+! Uem(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
+! Uem(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
+
+! UTB(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
+! UTB(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
+! UTB(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
+! UTB(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
+! UTB(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
+! UTB(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
+! UTB(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
+! UTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
+! UTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
+
  
  !! load precalculate error covariance matrix and EOF EigenVectorMatrix
  ! OPEN(NEWUNIT=file_unit, FILE='matrix/CovMatrx_Qw.bin',form="unformatted")
@@ -417,11 +475,26 @@ UTa(27,:)=(/0.0619927,    -0.171606,     0.30319,    -0.377319,  -0.269467,     
 UTa(28,:)=(/0.133013,     -0.149071,     0.275742,   -0.360636,  -0.332127,      0.220095,    0.0265447,    0.397965 /)
 UTa(29,:)=(/0.987253,      0.0793131,   -0.0418795,   0.0881041,  0.0683952,    -0.0202147,  -0.0017761,   -0.0478213/)
   
-call ProjCov(nEOF,nlevel,UQw,CovQw,LambdaQw)
-call ProjCov(nEOF,nlevel,UTa,CovTa,LambdaTa)
+
+
+!! However, due to the terrial height, bottom layers are often burried beneath the surface thus not approprite to be included in 
+!! RTTOV forward simulation.
+
+!! Determine the layer number:  
+  nLayEff=nlevel
+  CALL DeterminNlayEff(nLay,PLEVEL,SfcPress,nLayEff)
+!! modified Covar of bottom layers 
+  CALL DisabLayBelowSfc(nLay,nLayEff,CovQw)
+  CALL DisabLayBelowSfc(nLay,nLayEff,CovTa)
+  ! print*,SaAtm
+
+!! transform to Covars in EOF space
+  CALL ProjCov(nEOF,nlevel,UQw,CovQw,LambdaQw)
+  CALL ProjCov(nEOF,nlevel,UTa,CovTa,LambdaTa)
 
 !! idealy, If Ta and Qw are all full rank, the eigenvalue diagnal matrix will be :
 !! these diagnal values are principle components of EOF space,  we gona use them as the error covariance matrix in EOF space.
+!! pcvar :(30.58026, 17.67337, 11.69979, 8.050688, 5.817812, 4.843317, 3.952374, 2.973315 ) %
 ! LambdaQW(1,:)=(/3.710733e-06,0.,0.,0.,0.,0.,0.,0./)
 ! LambdaQW(2,:)=(/0.,2.144559e-06,0.,0.,0.,0.,0.,0./)
 ! LambdaQW(3,:)=(/0.,0.,1.4197e-06,0.,0.,0.,0.,0./)
@@ -431,6 +504,7 @@ call ProjCov(nEOF,nlevel,UTa,CovTa,LambdaTa)
 ! LambdaQW(7,:)=(/0.,0.,0.,0.,0.,0.,4.795971e-07,0./)
 ! LambdaQW(8,:)=(/0.,0.,0.,0.,0.,0.,0.,3.607942e-07/)
 
+! pcvar :(29.69952, 11.34457, 9.393681, 6.925895, 4.883001, 3.886191, 3.609612, 3.441968 ) %
 ! LambdaTA(1,:)=(/9.89189,0.,0.,0.,0.,0.,0.,0./)
 ! LambdaTA(2,:)=(/0.,3.778485,0.,0.,0.,0.,0.,0./)
 ! LambdaTA(3,:)=(/0.,0.,3.128712,0.,0.,0.,0.,0./)
@@ -440,141 +514,99 @@ call ProjCov(nEOF,nlevel,UTa,CovTa,LambdaTa)
 ! LambdaTA(7,:)=(/0.,0.,0.,0.,0.,0.,1.202237,0./)
 ! LambdaTA(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.146401/)
 
-! do i=1,nEOF
-! print*, LambdaQw(i,:)
-! end do
-! do i=1,nEOF
-! print*, LambdaTa(i,:)
-! end do
 
-! stop
+Utotal=0.0
+Utotal(1:29,1:8)=UTa
+Utotal(30:58,9:16)=UQw
+Utotal(59:59,17:17)=1.0   !! LST
+Utotal(60:68,18:26)=Uem   !! emissivity
 
-
-
-! 8 EOFs
-! real, dimension(8,8)				 	:: LambdaQW  ! pcvar :(30.58026, 17.67337, 11.69979, 8.050688, 5.817812, 4.843317, 3.952374, 2.973315 ) %
-! real, dimension(8,8)		 			:: LambdaTA  ! pcvar :(29.69952, 11.34457, 9.393681, 6.925895, 4.883001, 3.886191, 3.609612, 3.441968 ) %
-! real, dimension(9,9)  					:: LambdaEM !!! 0.25*0.25
-! real, dimension(9,9)  					:: LambdaTB  !! NEDT*NEDT
-
-! real, dimension(9,9)					:: Uem, UTB
-! real, dimension(29,8) 					:: UQw, UTa			
-! real, dimension(68,26)      			:: U
-! REAL, dimension(26,26)					:: Lambda
-
-
-
-! 0.25*0.25
-! LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
-! LambdaEM(2,:)=(/0.,0.0625,0.,0.,0.,0.,0.,0.,0./)
-! LambdaEM(3,:)=(/0.,0.,0.0625,0.,0.,0.,0.,0.,0./)
-! LambdaEM(4,:)=(/0.,0.,0.,0.0625,0.,0.,0.,0.,0./)
-! LambdaEM(5,:)=(/0.,0.,0.,0.,0.0625,0.,0.,0.,0./)
-! LambdaEM(6,:)=(/0.,0.,0.,0.,0.,0.0625,0.,0.,0./)
-! LambdaEM(7,:)=(/0.,0.,0.,0.,0.,0.,0.0625,0.,0./)
-! LambdaEM(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.0625,0./)
-! LambdaEM(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.0625/)
-
-! NEDT*NEDT
-! LambdaTB(1,:)=(/0.77,0.,0.,0.,0.,0.,0.,0.,0./)
-! LambdaTB(2,:)=(/0.,0.78,0.,0.,0.,0.,0.,0.,0./)
-! LambdaTB(3,:)=(/0.,0.,0.63,0.,0.,0.,0.,0.,0./)
-! LambdaTB(4,:)=(/0.,0.,0.,0.60,0.,0.,0.,0.,0./)
-! LambdaTB(5,:)=(/0.,0.,0.,0.,0.51,0.,0.,0.,0./)
-! LambdaTB(6,:)=(/0.,0.,0.,0.,0.,0.41,0.,0.,0./)
-! LambdaTB(7,:)=(/0.,0.,0.,0.,0.,0.,0.42,0.,0./)
-! LambdaTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.32,0./)
-! LambdaTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.31/)
-
-
-!! transform matrix
-! Uem(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
-! Uem(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
-! Uem(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
-! Uem(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
-! Uem(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
-! Uem(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
-! Uem(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
-! Uem(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
-! Uem(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
-
-! UTB(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
-! UTB(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
-! UTB(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
-! UTB(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
-! UTB(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
-! UTB(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
-! UTB(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
-! UTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
-! UTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
-
-
-
-! U=0.0
-! U(1:29,1:8)=UTa
-! U(30:58,9:16)=UQw
-! U(59:59,17:17)=1.0   !! LST
-! U(60:68,18:26)=Uem   !! emissivity
-
-! Lambda=0.0
-! Lambda(1:8,1:8)=LambdaTA
-! Lambda(9:16,9:16)=LambdaQW
-! Lambda(17,17)=12.773  !! k*k   Stdev^2 
-! Lambda(18:26,18:26)=LambdaEM
-
-! do ix=1,26
-! 	print*,Lambda(:,ix)
-
-! end do
-! do ix=1,26
-! 	print*,U(:,ix)
-
-! end do
-! stop
-
-
-!! calculate effective Layer
+Lambda=0.0
+Lambda(1:8,1:8)=LambdaTA
+Lambda(9:16,9:16)=LambdaQW
+Lambda(17,17)=12.773  !! k*k   Stdev^2 
+Lambda(18:26,18:26)=LambdaEM
 
 
 
 !!! perform a inital clear sky forward modeling to get the emissivity 1st guess, the analytic emissivity solution.
-! call rttov_fwd_clearsky(imonth,nlevel,nchannel,incident,channels,longitude,latitude,plevel,phalf,&
-				! QWatm,Tatm,LST,Psrf,T2m,Snowc,Smc,TBobs,EmissAnalyt,Emiss1st)
+call rttov_fwd_clearsky(imonth,nLayEff,nchannel,incident,channels,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
+				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,TBobs,EmissAnalyt,Emiss1st)
 
-!!! Determine the number of principle components
-! NEOF=8  !! for vapor and Ta
-!! read in Ta error matrix
+nIters=0				
+DO WHILE (.Ture.)
+	nIters=nIters+1
 
+	! input emissin, Tatm, QWatm,
+	! output jacobian matrix	
+call rttov_fwd_Kmodel(imonth,nLayEff,nchannel,incident,channels,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
+				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,TBobs,....)
 
-! print*,QWatm
-! print*,MATMUL(QWatm, UQw)
-! print*,MATMUL(UQw,MATMUL(QWatm, UQw))
+	
+	!! decide the chisq -- the criterion of Iteration stop
 
+	!! transform Jacobians to EOF space
+	!! compute DX in EOF space
+	!! DXTilda
 
-! print*,Tatm
-! print*,MATMUL(Tatm, UTa)
-! print*,MATMUL(UTa,MATMUL(Tatm, UTa))
+	!! project to geophysical states space
+	!! DX=U#DXTilda
 
-
-
-
-
+	!! update Update Ta, Qw, Em, LST in GEO space
+	
+	IF (nIters.GE.20) Break
+END DO
+				
+! return EmissAnalyt,Emiss1st,Em1DVar,LstTune,nIters
 
 end subroutine retrieve_core_1dvar
 
+SUBROUTINE DeterminNlayEff(nLay,pres_lay,SfcPress,nLayEff)
+  INTEGER               :: nLay,nLayEff,i
+  REAL                  :: SfcPress
+  REAL,    DIMENSION(nLay) :: pres_lay
+  nLayEff=0
+  Do i=1,nLay
+     IF (pres_lay(i).le.SfcPress .and. SfcPress/pres_lay(i).gt.1.01) THEN
+        nLayEff = nLayEff + 1
+     ENDIF
+  ENDDO
+  RETURN
+END SUBROUTINE DeterminNlayEff
 
-  SUBROUTINE ProjCov(nR,nG,Ustar,Sa,Lambda)
-    !---Input/Output variables
-    INTEGER              :: nR,nG
-    REAL, DIMENSION(nG,nR) :: Ustar
-    REAl, DIMENSION(nG,nG) :: Sa
-    REAL, DIMENSION(nR,nR) :: Lambda
-    !---Local variables
-    REAl, DIMENSION(nR,nG) :: UstarT
-    REAL, DIMENSION(nG,nR) :: A
-    UstarT = TRANSPOSE(Ustar(1:nG,1:nR))
-    A      = MATMUL(Sa(1:nG,1:nG),Ustar(1:nG,1:nR))
-    Lambda(1:nR,1:nR)=MATMUL(UstarT,A)
+SUBROUTINE DisabLayBelowSfc(nLay,nLayEff,SaAtm)
+  REAL, DIMENSION(:,:) :: SaAtm
+  REAl                 :: SfcPress
+  INTEGER              :: nLayEff,i,nLay,iattempt
+
+    !---Disable retrieval of below-sfc layers by setting covar to high value and decorrel.
+	
+	!! TOA(1) -> srf(nLayEff) -> bottom (nLay)
+	
+	!! decorrel.
+    SaAtm(nLayEff+1:nLay,:)  =0.
+    SaAtm(:,nLayEff+1:nLay)  =0.
+	!! covar to high value
+    Do i=nLayEff+1,nLay
+       SaAtm(i,i) =1000.   !! the source code of MIRS set it to 0., Here we set it to a large number for large uncertainty
+    ENDDO
+	
     RETURN
-  END SUBROUTINE ProjCov
+  END SUBROUTINE DisabLayBelowSfc
+
+
+SUBROUTINE ProjCov(nR,nG,Ustar,Sa,Lambda)
+  !---Input/Output variables
+  INTEGER              :: nR,nG
+  REAL, DIMENSION(nG,nR) :: Ustar
+  REAl, DIMENSION(nG,nG) :: Sa
+  REAL, DIMENSION(nR,nR) :: Lambda
+  !---Local variables
+  REAl, DIMENSION(nR,nG) :: UstarT
+  REAL, DIMENSION(nG,nR) :: A
+  UstarT = TRANSPOSE(Ustar(1:nG,1:nR))
+  A      = MATMUL(Sa(1:nG,1:nG),Ustar(1:nG,1:nR))
+  Lambda(1:nR,1:nR)=MATMUL(UstarT,A)
+  RETURN
+END SUBROUTINE ProjCov
 
