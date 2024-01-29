@@ -533,12 +533,10 @@ Lambda(18:26,18:26)=LambdaEM
   				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,TBobs,EmissAnalyt,Emiss1st)
  
 
- 
   ! Write(*,*) 'Emiss1st, ','EmissAnalyt'
   ! do ich=1,9
 	! print*, Emiss1st(ich),EmissAnalyt(ich)
   ! end do
-
 
   LstTune	=	LST
   TbTune	=	TBobs
@@ -552,31 +550,32 @@ Lambda(18:26,18:26)=LambdaEM
 	CALL rttov_fwd_jacobian(nLayEff,nchannel,incident,plevel(1:nLayEff),&
 				QWatm(1:nLayEff),Tatm(1:nLayEff),LstTune,T2m,Emiss1st,TbTune,Emss_K,Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),LST_K)
 
-open(10,file="1st_iter_params.md")
-	Write(10,*) '## nLayEff = ',nLayEff,' '
-	Write(10,*) '| Emiss TELSEM  |  Emiss Analytical  |  TbTune (K)  |  TBobs (K) |  '
-	Write(10,*) '|:-------|:-------|:-------|:-------|  '
-    do ich=1,9
-		Write(10,*)'| ', Emiss1st(ich),'| ',EmissAnalyt(ich),'| ',TbTune(ich),'| ',TBobs(ich),' |  '
-	end do
-	Write(10,*) '--- ' 
-	Write(10,*) '| Emss_K (K/ )  |    LST_K (K/K) |  '
-			Write(10,*) '|:-------|:-------|  '
-    do ich=1,9
-		Write(10,*) '| ',Emss_K(ich),'| ',LST_K(ich),' | '
-	end do
-	
-	do ifr=1,9
-		Write(10,*) '--- ' 
-		Write(10,*) '## CH:' ,ifr
-		Write(10,*) '| Ta_K (K/K) |   Qw_K (K/(kg/kg) |  '
-		Write(10,*) '|:-------|:-------|  '
-		do ilv=1,29
-			Write(10,*) '| ',Ta_K(ifr,ilv),' | ',Qw_K(ifr,ilv),' |  '
-		end do
-	end do
+	! open(10,file="1st_iter_params.md")
+		! Write(10,*) '## nLayEff = ',nLayEff,' '
+		! Write(10,*) '| Emiss TELSEM  |  Emiss Analytical  |  TbTune (K)  |  TBobs (K) |  '
+		! Write(10,*) '|:-------|:-------|:-------|:-------|  '
+		! do ich=1,9
+			! Write(10,*)'| ', Emiss1st(ich),'| ',EmissAnalyt(ich),'| ',TbTune(ich),'| ',TBobs(ich),' |  '
+		! end do
+		! Write(10,*) '--- ' 
+		! Write(10,*) '| Emss_K (K/ )  |    LST_K (K/K) |  '
+				! Write(10,*) '|:-------|:-------|  '
+		! do ich=1,9
+			! Write(10,*) '| ',Emss_K(ich),'| ',LST_K(ich),' | '
+		! end do
+		
+		! do ifr=1,9
+			! Write(10,*) '--- ' 
+			! Write(10,*) '## CH:' ,ifr
+			! Write(10,*) '| Ta_K (K/K) |   Qw_K (K/(kg/kg) |  '
+			! Write(10,*) '|:-------|:-------|  '
+			! do ilv=1,29
+				! Write(10,*) '| ',Ta_K(ifr,ilv),' | ',Qw_K(ifr,ilv),' |  '
+			! end do
+		! end do
 
-close(10)
+	! close(10)
+	
 	stop
 	!! decide the chisq -- the criterion of Iteration stop
 
