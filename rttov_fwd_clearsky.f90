@@ -9,7 +9,6 @@
 
 subroutine rttov_fwd_clearsky( &
 		imonth,nlevel,nchannel,incident, &
-		channels,& 					!! [nchannel] channel list
 		longitude,latitude,&        !!  Geolications
 		plevel,phalf,&				!!  pressure levels in hpa
 		vapor,&						!!  vapor mixing ratio in kg/kg
@@ -101,7 +100,6 @@ subroutine rttov_fwd_clearsky( &
   INTEGER ,intent(in) 	:: nchannel,nlevel
 
   REAL 	,intent(in)								:: incident
-  INTEGER, dimension(nchannel) ,intent(in) 		:: channels
   real*4,intent(in) 			:: longitude,latitude
   real*4,intent(in)  		:: skt,psrf,t2m,snowc,smc
   real*4, dimension(nlevel) ,intent(in)			:: plevel,phalf
@@ -154,7 +152,7 @@ subroutine rttov_fwd_clearsky( &
   INTEGER(KIND=jpim) :: j
   INTEGER(KIND=jpim) :: ilev
   INTEGER(KIND=jpim) :: iprof, joff
-  INTEGER            :: ios
+  INTEGER            :: ios,i
 
 
   REAL(kind=jprb), ALLOCATABLE  :: obs_tb (:)     ! Observed TB 
@@ -184,19 +182,18 @@ subroutine rttov_fwd_clearsky( &
   hydrotable_filename='/home/jihenghu/rttov13/rtcoef_rttov13/hydrotable/hydrotable_gpm_gmi.dat'
   coef_filename='/home/jihenghu/rttov13/rtcoef_rttov13/rttov13pred54L/rtcoef_gpm_1_gmi.dat'
   
-
-  
   nprof=1
   nlevels=nlevel
   nchannels=nchannel
 
   ALLOCATE(channel_list(nchannel))
-  channel_list=channels!(/1,2,3,4,5,6,7,8,9,10/)
+  channel_list=[(i,i=1,nchannel)]
+
   nthreads=1
   ! --------------------------------------------------------------------------
   ! 1. Initialise RTTOV-SCATT options structure
   ! --------------------------------------------------------------------------
-
+  opts%config%verbose=.False.
   ! The rttov_options structure (opts) should be left with its default values.
   ! RTTOV-SCATT only allows access to a limited number of RTTOV options: these
   ! are set in the rttov_options_scatt structure (opts_scatt).
@@ -241,7 +238,7 @@ subroutine rttov_fwd_clearsky( &
   ! in general one can simulate a different number of channels for each profile.
 
   nchanprof = nchannels * nprof
-! print*,nchanprof
+
   !! Allocate tb_obs
   ALLOCATE(obs_tb(nchanprof))
   ALLOCATE(land_emis(nchanprof))
@@ -290,7 +287,7 @@ subroutine rttov_fwd_clearsky( &
   ELSE
     atlas_type = atlas_type_ir ! IR atlas
   ENDIF
-  ! use TELSEM2 ATLAS
+  
   CALL rttov_setup_emis_atlas(          &
               errorstatus,              &
               opts,                     &
@@ -379,6 +376,9 @@ subroutine rttov_fwd_clearsky( &
 	profiles(iprof) % s2m % u= 0.0_jprb 
 	profiles(iprof) % s2m % v= 0.0_jprb 
 	
+	! print*, plevel
+	! print*, plevel(nlevels),psrf
+	
 	where(profiles(iprof)%p(:)>psrf)profiles(iprof)%q=1.E-9
 	where(profiles(iprof)%p(:)>psrf)cld_profiles(iprof)%hydro_frac(:,1)=0.0
 	where(profiles(iprof)%p(:)>psrf)cld_profiles(iprof)%hydro(:,hydro_index_clw)=0.0
@@ -421,11 +421,11 @@ subroutine rttov_fwd_clearsky( &
   !========== Read profiles == end =============
   !=============================================
 
-
   ! --------------------------------------------------------------------------
   ! 6. Specify surface emissivity
   ! --------------------------------------------------------------------------
   ! Use emissivity atlas
+
   CALL rttov_get_emis(             &
             errorstatus,           &
             opts,                  &
@@ -438,6 +438,7 @@ subroutine rttov_fwd_clearsky( &
     WRITE(*,*) 'error reading emissivity atlas'
     CALL rttov_exit(errorstatus)
   ENDIF
+
 
   ! Calculate emissivity within RTTOV where the atlas emissivity value is
   ! zero or less

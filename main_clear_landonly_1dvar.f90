@@ -68,6 +68,7 @@
  ! RTTOV
  ! INCLUDE 'rttov_fwd_clearsky.f90'
  INCLUDE 'retrieve_core_1dvar.f90'
+ ! INCLUDE 'rttov_fwd_jacobian.f90'
  
  
  ! OUTPUT
@@ -194,7 +195,8 @@ PROGRAM main_clear_retrieve_landonly
   REAL, DIMENSION(:,:),ALLOCATABLE :: TB_land, Emissivity_land
   
   REAL, DIMENSION(:,:),ALLOCATABLE :: Emiss1st, Em1DVar
-  REAL, DIMENSION(:),ALLOCATABLE :: LstTune
+  REAL, DIMENSION(:),ALLOCATABLE :: LstTune,TBTune
+  Integer, DIMENSION(:),ALLOCATABLE :: niters
 
   
   LOGICAL :: alive1, alive2, alive3
@@ -205,7 +207,7 @@ PROGRAM main_clear_retrieve_landonly
   CHARACTER*255 :: EMISS_OUT_DIR,EMISS_FILENAME
   CHARACTER*7 :: samples
   INTEGER :: imonth
-
+  real 	  :: incident=52.8  !! GMI
   Integer :: num_land,iland
   
   logical :: REDO
@@ -1005,7 +1007,9 @@ PROGRAM main_clear_retrieve_landonly
 	ALLOCATE(Emissivity_land(nchannel,num_land))
 	ALLOCATE(Emiss1st(nchannel,num_land))
 	ALLOCATE(Em1DVar(nchannel,num_land))
+	ALLOCATE(TBTune(num_land))
 	ALLOCATE(LstTune(num_land))
+	ALLOCATE(niters(num_land))
 
 
 	Emissivity_land=0.0
@@ -1016,12 +1020,7 @@ PROGRAM main_clear_retrieve_landonly
 	ERA5_HR1_STAMP="_"
 	ERA5_HR2_STAMP="_"
 
-	PLEVEL=(/50.0,70.0,100.0,125.0,150.0,175.0,200.0,225.0,250.0,300.0,350.0,400.0,450.0,500.0	&
-		,550.0,600.0,650.0,700.0,750.0,775.0,800.0,825.0,850.0,875.0,900.0,925.0,950.0,975.0,1000.0/)  !! hpa
-	
-	PHALF=(/40.,60.,85.,112.5,137.5,162.5,187.5,212.5,237.5,275.,325.,375.,425.,475.,525.,575. &
-		,625.,675.,725.,762.5,787.5,812.5,837.5,862.5,887.5,912.5,937.5,962.5,987.5/)
-	
+
 	iland=0
 	do iscan=1, nscan
 		do ipixel=1, npixel
@@ -1153,20 +1152,20 @@ PROGRAM main_clear_retrieve_landonly
 	write(samples,"(i0.7)") num_land
 	
 	print*, "├──RTTOV retrieve begining, total samples= "//samples
-	! channel 10.65 
-	print*, "├──── Start RTTOV retrieve Channel 1-2 ......."
-	
-	print*,maxVal(Emissivity_swath),minVal(Emissivity_swath)
-	print*,maxVal(Emissivity_land),minVal(Emissivity_land)
 
+	PLEVEL=(/50.0,70.0,100.0,125.0,150.0,175.0,200.0,225.0,250.0,300.0,350.0,400.0,450.0,500.0	&
+		,550.0,600.0,650.0,700.0,750.0,775.0,800.0,825.0,850.0,875.0,900.0,925.0,950.0,975.0,1000.0/)  !! hpa
+	
+	PHALF=(/40.,60.,85.,112.5,137.5,162.5,187.5,212.5,237.5,275.,325.,375.,425.,475.,525.,575. &
+		,625.,675.,725.,762.5,787.5,812.5,837.5,862.5,887.5,912.5,937.5,962.5,987.5/)
 	
 
 do iland =1,num_land
 
-	call retrieve_core_1dvar(imonth,Longitude_land(iland),Latitude_land(iland),&
-		TB_land(:,iland),AirTemp_land(:,iland),Vapor_land(:,iland),LST_land(iland),&
+	call retrieve_core_1dvar(nlevel,nchannel,imonth,incident,Longitude_land(iland),Latitude_land(iland),&
+		PLEVEL,PHALF,TB_land(:,iland),AirTemp_land(:,iland),Vapor_land(:,iland),LST_land(iland),&
 		T2m_land(iland),SnowC_land(iland),SMC_land(iland),Psrf_land(iland),&
-		Emissivity_land(:,iland),Emiss1st(:,iland),Em1DVar(:,iland),LstTune(iland))
+		Emissivity_land(:,iland),Emiss1st(:,iland),Em1DVar(:,iland),TBTune(iland),LstTune(iland),niters(iland))
 		
 	! print*,Emissivity_land(:,iland)
 	! print*,Emiss1st(:,iland)
@@ -1273,6 +1272,8 @@ end do
 	DEALLOCATE(Emiss1st)
 	DEALLOCATE(Em1DVar)
 	DEALLOCATE(LstTune)
+	DEALLOCATE(TBTune)
+	DEALLOCATE(niters)
 	
 2333 Continue
 		

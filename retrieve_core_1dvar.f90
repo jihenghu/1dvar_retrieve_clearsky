@@ -4,31 +4,26 @@
 !! Jiheng Hu, 2024/1/21
 
 
-subroutine retrieve_core_1dvar(imonth,longitude,latitude,&
-		TBobs,Tatm,QWatm,LST,T2m,Snowc,Smc,SfcPress,EmissAnalyt,Emiss1st,Em1DVar,LstTune,nIters)
+subroutine retrieve_core_1dvar(nlevel,nchannel,imonth,incident,longitude,latitude,&
+		PLEVEL,PHALF,TBobs,Tatm,QWatm,LST,T2m,Snowc,Smc,SfcPress,&
+		EmissAnalyt,Emiss1st,Em1DVar,TbTune,LstTune,nIters)
 
 
-integer,					parameter 	:: nlevel=29
-integer, 					parameter 	:: nchannel=9     !! GMI
-real, 						parameter 	:: incident=52.8  !! GMI
-integer,dimension(nchannel),parameter 	:: channels=(/1,2,3,4,5,6,7,8,9/)  !! GMI
-real, 	dimension(nlevel),	parameter 	:: PLEVEL=(/50.0,70.0,100.0,125.0,150.0,175.0,200.0,225.0 &
-												  ,250.0,300.0,350.0,400.0,450.0,500.0,550.0,600.0&
-												  ,650.0,700.0,750.0,775.0,800.0,825.0,850.0,875.0&
-												  ,900.0,925.0,950.0,975.0,1000.0/)  !! hpa
-		
-real,	dimension(nlevel),  parameter 	:: PHALF= (/20.,60.,85.,112.5,137.5,162.5,187.5,212.5,237.5 &
-												  ,275.,325.,375.,425.,475.,525.,575.,625.,675.,725.&
-												  ,762.5,787.5,812.5,837.5,862.5,887.5,912.5,937.5,962.5,987.5/)  !! hpa
-real,   dimension(nlevel)				:: pmb
-
+integer,					intent(IN)	:: nlevel
+integer,					intent(IN)	:: nchannel
 integer,					intent(IN)	:: imonth
-real,  						intent(IN)	:: longitude,latitude
+real,						intent(IN)	:: incident
+real,  						intent(IN)	:: longitude
+real,  						intent(IN)	:: latitude
+
+real, 	dimension(nlevel),  intent(IN)	:: PLEVEL
+real, 	dimension(nlevel),  intent(IN)	:: PHALF
 real, 	dimension(nchannel),intent(IN) 	:: TBobs
 real, 	dimension(nlevel), 	intent(IN)	:: Tatm,QWatm
 real, 						intent(IN)	:: LST,T2m,Snowc,Smc,SfcPress
 
-real, 	dimension(nchannel),intent(OUT)	:: EmissAnalyt,Em1DVar,Emiss1st,LstTune
+real, 	dimension(nchannel),intent(OUT)	:: EmissAnalyt,Em1DVar,Emiss1st,LstTune,TbTune
+INTEGER,					intent(OUT) :: nIters
 
 !!! covariance
 integer,	parameter					:: nEOF=8
@@ -47,11 +42,7 @@ REAL, dimension(26,26)					:: Lambda
 integer :: file_unit
 
 INTEGER ::  nLayEff
-INTEGER ::  iter, nIters
-
-
-
-
+INTEGER ::  iter,ich
 
 ! 0.25*0.25
 ! LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
@@ -482,10 +473,10 @@ UTa(29,:)=(/0.987253,      0.0793131,   -0.0418795,   0.0881041,  0.0683952,    
 
 !! Determine the layer number:  
   nLayEff=nlevel
-  CALL DeterminNlayEff(nLay,PLEVEL,SfcPress,nLayEff)
+  CALL DeterminNlayEff(nlevel,PLEVEL,SfcPress,nLayEff)
 !! modified Covar of bottom layers 
-  CALL DisabLayBelowSfc(nLay,nLayEff,CovQw)
-  CALL DisabLayBelowSfc(nLay,nLayEff,CovTa)
+  CALL DisabLayBelowSfc(nlevel,nLayEff,CovQw)
+  CALL DisabLayBelowSfc(nlevel,nLayEff,CovTa)
   ! print*,SaAtm
 
 !! transform to Covars in EOF space
@@ -530,19 +521,25 @@ Lambda(18:26,18:26)=LambdaEM
 
 
 !!! perform a inital clear sky forward modeling to get the emissivity 1st guess, the analytic emissivity solution.
-call rttov_fwd_clearsky(imonth,nLayEff,nchannel,incident,channels,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
+
+call rttov_fwd_clearsky(imonth,nLayEff,nchannel,incident,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
 				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,TBobs,EmissAnalyt,Emiss1st)
 
+print*, 'Emiss1st, ','EmissAnalyt'
+do ich=1,9
+	print*, Emiss1st(ich),EmissAnalyt(ich)
+end do
+
 nIters=0				
-DO WHILE (.Ture.)
+DO WHILE (.True.)
 	nIters=nIters+1
 
 	! input emissin, Tatm, QWatm,
 	! output jacobian matrix	
-call rttov_fwd_Kmodel(imonth,nLayEff,nchannel,incident,channels,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
-				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,TBobs,....)
+	CALL rttov_fwd_jacobian(nLayEff,nchannel,incident,plevel(1:nLayEff),&
+				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,Emiss1st)
 
-	
+	stop
 	!! decide the chisq -- the criterion of Iteration stop
 
 	!! transform Jacobians to EOF space
@@ -554,9 +551,10 @@ call rttov_fwd_Kmodel(imonth,nLayEff,nchannel,incident,channels,longitude,latitu
 
 	!! update Update Ta, Qw, Em, LST in GEO space
 	
-	IF (nIters.GE.20) Break
+	IF (nIters.ge.20) GOTO 221 
 END DO
-				
+
+221 continue		
 ! return EmissAnalyt,Emiss1st,Em1DVar,LstTune,nIters
 
 end subroutine retrieve_core_1dvar
@@ -575,24 +573,25 @@ SUBROUTINE DeterminNlayEff(nLay,pres_lay,SfcPress,nLayEff)
 END SUBROUTINE DeterminNlayEff
 
 SUBROUTINE DisabLayBelowSfc(nLay,nLayEff,SaAtm)
-  REAL, DIMENSION(:,:) :: SaAtm
+  REAL, DIMENSION(nLay,nLay) :: SaAtm
   REAl                 :: SfcPress
   INTEGER              :: nLayEff,i,nLay,iattempt
 
-    !---Disable retrieval of below-sfc layers by setting covar to high value and decorrel.
+  !---Disable retrieval of below-sfc layers by setting covar to high value and decorrel.
+
+  !! TOA(1) -> srf(nLayEff) -> bottom (nLay)
 	
-	!! TOA(1) -> srf(nLayEff) -> bottom (nLay)
+  !! decorrel.
+  SaAtm(nLayEff+1:nLay,:)  =0.
+  SaAtm(:,nLayEff+1:nLay)  =0.
+  !! covar to high value
+  Do i=nLayEff+1,nLay
+     SaAtm(i,i) =1000.   
+	 !! The source code of MIRS set it to 0., Here we set it to a large number for large uncertainty
+  ENDDO
 	
-	!! decorrel.
-    SaAtm(nLayEff+1:nLay,:)  =0.
-    SaAtm(:,nLayEff+1:nLay)  =0.
-	!! covar to high value
-    Do i=nLayEff+1,nLay
-       SaAtm(i,i) =1000.   !! the source code of MIRS set it to 0., Here we set it to a large number for large uncertainty
-    ENDDO
-	
-    RETURN
-  END SUBROUTINE DisabLayBelowSfc
+  RETURN
+END SUBROUTINE DisabLayBelowSfc
 
 
 SUBROUTINE ProjCov(nR,nG,Ustar,Sa,Lambda)
