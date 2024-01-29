@@ -22,8 +22,13 @@ real, 	dimension(nchannel),intent(IN) 	:: TBobs
 real, 	dimension(nlevel), 	intent(IN)	:: Tatm,QWatm
 real, 						intent(IN)	:: LST,T2m,Snowc,Smc,SfcPress
 
-real, 	dimension(nchannel),intent(OUT)	:: EmissAnalyt,Em1DVar,Emiss1st,LstTune,TbTune
+real, 	dimension(nchannel),intent(OUT)	:: EmissAnalyt,Em1DVar,Emiss1st,TbTune
+real,						intent(OUT)	:: LstTune
 INTEGER,					intent(OUT) :: nIters
+
+
+real, 	dimension(nchannel)				:: Emss_K,LST_K
+real, 	dimension(nchannel,nlevel)		:: Ta_K,Qw_K
 
 !!! covariance
 integer,	parameter					:: nEOF=8
@@ -32,10 +37,12 @@ real, 		dimension(nlevel,nEOF)		:: UQw, UTa
 
 !! cov in EOF space
 real, 		dimension(nEOF,nEOF)		:: LambdaQw,LambdaTa
+
 !! TB and EMissivity
 real, dimension(9,9)  					:: LambdaEM  !! 0.25*0.25
 real, dimension(9,9)  					:: LambdaTB  !! NEDT*NEDT
 real, dimension(9,9)					:: Uem, UTB
+
 !! Total tranform EigenVectorMatrix and EigenValueMatrix
 real, dimension(68,26)      			:: Utotal
 REAL, dimension(26,26)					:: Lambda
@@ -522,23 +529,54 @@ Lambda(18:26,18:26)=LambdaEM
 
 !!! perform a inital clear sky forward modeling to get the emissivity 1st guess, the analytic emissivity solution.
 
-call rttov_fwd_clearsky(imonth,nLayEff,nchannel,incident,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
-				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,TBobs,EmissAnalyt,Emiss1st)
+  call rttov_fwd_clearsky(imonth,nLayEff,nchannel,incident,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
+  				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,TBobs,EmissAnalyt,Emiss1st)
+ 
 
-print*, 'Emiss1st, ','EmissAnalyt'
-do ich=1,9
-	print*, Emiss1st(ich),EmissAnalyt(ich)
-end do
+ 
+  ! Write(*,*) 'Emiss1st, ','EmissAnalyt'
+  ! do ich=1,9
+	! print*, Emiss1st(ich),EmissAnalyt(ich)
+  ! end do
 
-nIters=0				
-DO WHILE (.True.)
+
+  LstTune	=	LST
+  TbTune	=	TBobs
+  nIters	=	0				
+
+  DO WHILE (.True.)
 	nIters=nIters+1
 
 	! input emissin, Tatm, QWatm,
 	! output jacobian matrix	
 	CALL rttov_fwd_jacobian(nLayEff,nchannel,incident,plevel(1:nLayEff),&
-				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,Emiss1st)
+				QWatm(1:nLayEff),Tatm(1:nLayEff),LstTune,T2m,Emiss1st,TbTune,Emss_K,Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),LST_K)
 
+open(10,file="1st_iter_params.md")
+	Write(10,*) '## nLayEff = ',nLayEff,' '
+	Write(10,*) '| Emiss TELSEM  |  Emiss Analytical  |  TbTune (K)  |  TBobs (K) |  '
+	Write(10,*) '|:-------|:-------|:-------|:-------|  '
+    do ich=1,9
+		Write(10,*)'| ', Emiss1st(ich),'| ',EmissAnalyt(ich),'| ',TbTune(ich),'| ',TBobs(ich),' |  '
+	end do
+	Write(10,*) '--- ' 
+	Write(10,*) '| Emss_K (K/ )  |    LST_K (K/K) |  '
+			Write(10,*) '|:-------|:-------|  '
+    do ich=1,9
+		Write(10,*) '| ',Emss_K(ich),'| ',LST_K(ich),' | '
+	end do
+	
+	do ifr=1,9
+		Write(10,*) '--- ' 
+		Write(10,*) '## CH:' ,ifr
+		Write(10,*) '| Ta_K (K/K) |   Qw_K (K/(kg/kg) |  '
+		Write(10,*) '|:-------|:-------|  '
+		do ilv=1,29
+			Write(10,*) '| ',Ta_K(ifr,ilv),' | ',Qw_K(ifr,ilv),' |  '
+		end do
+	end do
+
+close(10)
 	stop
 	!! decide the chisq -- the criterion of Iteration stop
 

@@ -9,7 +9,7 @@
 		! TBobs,Tatm,QWatm,LST,T2m,Snowc,Smc,SfcPress,EmissAnalyt,Emiss1st,
 		
 subroutine rttov_fwd_jacobian(nlevel,nchannel,incident,plevel,&
-				vapor,temps,skt,psrf,t2m,snowc,smc,Emissin)!,TBout,Emss_K,Ta_K,Qw_K,LST_K)
+				vapor,temps,skt,t2m,Emissin,TBout,Emss_K,Ta_K,Qw_K,LST_K)
 
   ! rttov_const contains useful RTTOV constants
   USE rttov_const, ONLY :     &
@@ -52,18 +52,17 @@ include "rttov_print_profile.interface"
 include "rttov_skipcommentline.interface"
 
 !! ===========================================================================
-  INTEGER ,intent(in) 	:: nchannel,nlevel
-
-  REAL 	,intent(in)								:: incident
-  real*4,intent(in)  		:: skt,psrf,t2m,snowc,smc
-  real*4, dimension(nlevel) ,intent(in)			:: plevel
-  real*4, dimension(nlevel),intent(in)  	:: vapor,temps
+  INTEGER ,intent(in) 								:: nchannel,nlevel
+  REAL 	,intent(in)									:: incident
+  real*4,intent(in)  								:: skt,t2m
+  real*4, dimension(nlevel) ,intent(in)				:: plevel
+  real*4, dimension(nlevel),intent(in)  			:: vapor,temps
   
-  real*4, dimension(nchannel),intent(in)	:: Emissin
-  ! real*4, dimension(nchannel),intent(out)	:: TBout
-  ! real*4, dimension(nchannel),intent(out)	:: Emss_K
-  ! real*4, dimension(nchannel),intent(out)	:: LST_K
-  ! real*4, dimension(nchannel,nlevel),intent(out) :: Ta_K,Qw_K
+  real*4, dimension(nchannel),intent(in)			:: Emissin
+  real*4, dimension(nchannel),intent(out)			:: TBout
+  real*4, dimension(nchannel),intent(out)			:: Emss_K
+  real*4, dimension(nchannel),intent(out)			:: LST_K
+  real*4, dimension(nchannel,nlevel),intent(out) 	:: Ta_K,Qw_K
   INTEGER :: i
 !! ===========================================================================
 
@@ -71,8 +70,8 @@ include "rttov_skipcommentline.interface"
 
   !--------------------------
   !
-  INTEGER(KIND=jpim), PARAMETER :: iup   = 20   ! unit for input profile file
-  INTEGER(KIND=jpim), PARAMETER :: ioout = 21   ! unit for output
+  INTEGER(KIND=jpim), PARAMETER	:: iup   = 20   ! unit for input profile file
+  INTEGER(KIND=jpim), PARAMETER	:: ioout = 21   ! unit for output
 
   ! RTTOV variables/structures
   !====================
@@ -95,7 +94,7 @@ include "rttov_skipcommentline.interface"
   INTEGER(KIND=jpim)               :: errorstatus                ! Return error status of RTTOV subroutine calls
 
   INTEGER(KIND=jpim) :: alloc_status
-  CHARACTER(LEN=9)  :: NameOfRoutine = 'example_k'
+  CHARACTER(LEN=9)  :: NameOfRoutine = 'rttov_fwd_jacobian'
 
   ! variables for input
   !====================
@@ -248,23 +247,23 @@ include "rttov_skipcommentline.interface"
     ! Read pressure (hPa), temp (K), WV, O3 (gas units ppmv or kg/kg - as read above)
     profiles(iprof) % p =	plevel
 
-    profiles(iprof) % t =temps
+    profiles(iprof) % t =	temps
 
-    profiles(iprof) % q =vapor
+    profiles(iprof) % q =	vapor
 
     ! 2 meter air variables
-    profiles(iprof) % s2m % t 		  =t2m
-    profiles(iprof) % s2m % q 		  =vapor(nlevels)
-    profiles(iprof) % s2m % p 		  =plevel(nlevels)
-    profiles(iprof) % s2m % u 		  =0.0_jprb 
-    profiles(iprof) % s2m % v 		  =0.0_jprb 
+    profiles(iprof) % s2m % t 		  =	t2m
+    profiles(iprof) % s2m % q 		  =	vapor(nlevels)
+    profiles(iprof) % s2m % p 		  =	plevel(nlevels)
+    profiles(iprof) % s2m % u 		  =	0.0_jprb 
+    profiles(iprof) % s2m % v 		  =	0.0_jprb 
 
     ! Skin variables
     profiles(iprof) % skin % t        = skt
     profiles(iprof) % skin % salinity = 35.0  ! Salinity only applies to FASTEM over sea
     profiles(iprof) % skin % fastem   =  (/3.0, 5.0, 15.0, 0.1, 0.3/)      ! FASTEM only applies to MW instruments
-    profiles(iprof) % skin % snow_fraction=snowc   !! actually no need, 'cause a ATLAS will be used.
-    profiles(iprof) % skin % soil_moisture=smc     !! actually no need, 'cause a ATLAS will be used.
+    profiles(iprof) % skin % snow_fraction=0.     !! actually no need, 'cause a ATLAS will be used.
+    profiles(iprof) % skin % soil_moisture=0.     !! actually no need, 'cause a ATLAS will be used.
 
 
     ! Surface type and water type
@@ -285,7 +284,6 @@ include "rttov_skipcommentline.interface"
     ! Cloud variables for simple cloud scheme, set cfraction to 0. to turn this off (VIS/IR only)
     profiles(iprof) % ctp = 0.
     profiles(iprof) % cfraction =0.0
-
 
   ENDDO
 
@@ -376,188 +374,25 @@ include "rttov_skipcommentline.interface"
     CALL rttov_exit(errorstatus)
   ENDIF
 
-
   !=====================================================
   !============== Output results == start ==============
 
   ! --- Output the DIRECT results -------------------------------------------
 
-  ! Open output file where results are written
-  OPEN(ioout, file='output_'//NameOfRoutine//'.dat', status='unknown', form='formatted', iostat=ios)
-  IF (ios /= 0) THEN
-    WRITE(*,*) 'error opening the output file ios= ', ios
-    CALL rttov_exit(errorstatus_fatal)
-  ENDIF
+	! CALCULATED BRIGHTNESS TEMPERATURES (K):
+	TBout = radiance % bt
 
-  WRITE(ioout,*)' -----------------'
-  WRITE(ioout,*)' Instrument ', inst_name(coefs % coef % id_inst)
-  WRITE(ioout,*)' -----------------'
-  WRITE(ioout,*)' '
-  CALL rttov_print_opts(opts, lu=ioout)
-
-  DO iprof = 1, nprof
-
-    joff = (iprof-1_jpim) * nchannels
-
-    nprint = 1 + INT((nchannels-1)/10)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)' Profile ', iprof
-
-    CALL rttov_print_profile(profiles(iprof), lu=ioout)
-
-    WRITE(ioout,777)'CHANNELS PROCESSED FOR SAT ', platform_name(coefs % coef % id_platform), coefs % coef % id_sat
-    WRITE(ioout,111) (chanprof(j) % chan, j = 1+joff, nchannels+joff)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED BRIGHTNESS TEMPERATURES (K):'
-    WRITE(ioout,222) (radiance % bt(j), j = 1+joff, nchannels+joff)
-    IF (opts % rt_ir % addsolar) THEN
-      WRITE(ioout,*)' '
-      WRITE(ioout,*)'CALCULATED SATELLITE REFLECTANCES (BRF):'
-      WRITE(ioout,444) (radiance % refl(j), j = 1+joff, nchannels+joff)
-    ENDIF
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED RADIANCES (mW/m2/sr/cm-1):'
-    WRITE(ioout,222) (radiance % total(j), j = 1+joff, nchannels+joff)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED OVERCAST RADIANCES:'
-    WRITE(ioout,222) (radiance % cloudy(j), j = 1+joff, nchannels+joff)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED SURFACE TO SPACE TRANSMITTANCE:'
-    WRITE(ioout,4444) (transmission % tau_total(j), j = 1+joff, nchannels+joff)
-    WRITE(ioout,*)' '
-    WRITE(ioout,*)'CALCULATED SURFACE EMISSIVITIES:'
-    WRITE(ioout,444) (emissivity(j) % emis_out, j = 1+joff, nchannels+joff)
-    IF (opts % rt_ir % addsolar) THEN
-      WRITE(ioout,*)' '
-      WRITE(ioout,*)'CALCULATED SURFACE BRDF:'
-      WRITE(ioout,444) (reflectance(j) % refl_out, j = 1+joff, nchannels+joff)
-    ENDIF
-
-    IF (nchannels <= 20) THEN
-      DO np = 1, nprint
-          WRITE(ioout,*)' '
-          WRITE(ioout,*)'Level to space transmittances for channels'
-          WRITE(ioout,1115) (chanprof(j+joff) % chan, &
-                    j = 1+(np-1)*10, MIN(np*10, nchannels))
-          DO ilev = 1, nlevels
-            DO j = 1 + (np-1)*10, MIN(np*10, nchannels)
-              ! Select transmittance based on channel type (VIS/NIR or IR)
-              IF (coefs % coef % ss_val_chn(chanprof(j+joff) % chan) == 2) THEN
-                trans_out(j - (np-1)*10) = transmission % tausun_levels_path1(ilev,j+joff)
-              ELSE
-                trans_out(j - (np-1)*10) = transmission % tau_levels(ilev,j+joff)
-              ENDIF
-            ENDDO
-            WRITE(ioout,4445) ilev, trans_out(1:j-1-(np-1)*10)
-          ENDDO
-          WRITE(ioout,1115) (chanprof(j+joff) % chan, &
-                    j = 1+(np-1)*10, MIN(np*10, nchannels))
-      ENDDO
-    ENDIF
-  ENDDO
-  WRITE(ioout,*)
-  WRITE(ioout,*)
-
-
-  ! --- Output the K results ------------------------------------------------
-
-  IF (profiles(1) % gas_units == gas_unit_specconc) THEN
-    gas_unit = '(K/(kg/kg))'
-  ELSE
-    gas_unit = '(K/ppmv)   '
-  ENDIF
-
-  WRITE(ioout,*)' -----------------'
-  WRITE(ioout,*)' Jacobians:'
-  WRITE(ioout,*)' -----------------'
-  WRITE(ioout,*)' '
-
-  DO iprof = 1, nprof
-
-    joff = (iprof-1_jpim) * nchannels
-
-    WRITE(ioout,*)' Profile ',iprof
-    WRITE(ioout,*)' '
-    WRITE(ioout,*) nchannels, ' channels'
-    WRITE(ioout,*) nlevels, ' levels'
-    WRITE(ioout,*)' '
-
-    WRITE(*,*) 'JOC(LST):'
-    WRITE(*,*) (profiles_k(j+joff)%skin%t,j = 1, nchannels)
-
-    WRITE(*,*) '(emiss_in):'
-    WRITE(*,*) (emissivity(j+joff)%emis_in,j = 1, nchannels)
-    WRITE(*,*) '(emiss_out):'
-    WRITE(*,*) (emissivity(j+joff)%emis_out,j = 1, nchannels)
+	! Jacobians:'
+	LST_K = profiles_k%skin%t   !!  K/K 
+	Emss_K = emissivity_k%emis_out  !! K/1
 	
-    WRITE(*,*) 'JOC(emiss_in):'
-    WRITE(*,*) (emissivity_k(j+joff)%emis_in,j = 1, nchannels)
-    WRITE(*,*) 'JOC(emiss_out):'
-    WRITE(*,*) (emissivity_k(j+joff)%emis_out,j = 1, nchannels)
-
-    DO j = 1, nchannels
-
-      WRITE(ioout,*)'Channel ', chanprof(j+joff) % chan
-      WRITE(ioout,'(/a5,a9,a18,1x,a19)',advance='no') "Level", "Pressure", "JAC(Temp) (K/K)", "JAC(WV) "//gas_unit
-      IF (opts % rt_all % ozone_data) THEN
-        WRITE(ioout,'(1x,a19)',advance='no') "JAC(O3) "//gas_unit
-      ENDIF
-      IF (opts % rt_all % co2_data) THEN
-        WRITE(ioout,'(1x,a20)',advance='no') "JAC(CO2) "//gas_unit
-      ENDIF
-      IF (opts % rt_all % n2o_data) THEN
-        WRITE(ioout,'(1x,a20)',advance='no') "JAC(N2O) "//gas_unit
-      ENDIF
-      IF (opts % rt_all % co_data) THEN
-        WRITE(ioout,'(1x,a19)',advance='no') "JAC(CO) "//gas_unit
-      ENDIF
-      IF (opts % rt_all % ch4_data) THEN
-        WRITE(ioout,'(1x,a20)',advance='no') "JAC(CH4) "//gas_unit
-      ENDIF
-      IF (opts % rt_all % so2_data) THEN
-        WRITE(ioout,'(1x,a20)',advance='no') "JAC(SO2) "//gas_unit
-      ENDIF
-      WRITE(ioout,'(a)',advance='yes')
-
-      DO l = 1, profiles_k(j+joff) % nlevels
-        WRITE(ioout,'(i4,1x,f9.4,1x,e16.6,1x,e17.6)',advance='no') &
-          l, profiles(iprof)%p(l), profiles_k(j+joff)%t(l), profiles_k(j+joff)%q(l)
-        IF (opts % rt_all % ozone_data) THEN
-          WRITE(ioout,'(1x,e18.6)',advance='no') profiles_k(j+joff)%o3(l)
-        ENDIF
-        IF (opts % rt_all % co2_data) THEN
-          WRITE(ioout,'(1x,e19.6)',advance='no') profiles_k(j+joff)%co2(l)
-        ENDIF
-        IF (opts % rt_all % n2o_data) THEN
-          WRITE(ioout,'(1x,e19.6)',advance='no') profiles_k(j+joff)%n2o(l)
-        ENDIF
-        IF (opts % rt_all % co_data) THEN
-          WRITE(ioout,'(1x,e18.6)',advance='no') profiles_k(j+joff)%co(l)
-        ENDIF
-        IF (opts % rt_all % ch4_data) THEN
-          WRITE(ioout,'(1x,e19.6)',advance='no') profiles_k(j+joff)%ch4(l)
-        ENDIF
-        IF (opts % rt_all % so2_data) THEN
-          WRITE(ioout,'(1x,e19.6)',advance='no') profiles_k(j+joff)%so2(l)
-        ENDIF
-        WRITE(ioout,'(a)',advance='yes')
-      ENDDO
-      WRITE(ioout,*)' '
-
-    ENDDO ! channels
-
-  ENDDO ! profiles
-
-  ! Close output file
-  CLOSE(ioout, iostat=ios)
-  IF (ios /= 0) THEN
-    WRITE(*,*) 'error closing the output file ios= ', ios
-    CALL rttov_exit(errorstatus_fatal)
-  ENDIF
+	DO iprof=1,nchannel
+		Ta_K(iprof,:)=profiles_k(iprof)%t !! K/K  
+		Qw_K(iprof,:)=profiles_k(iprof)%q !! K/(kg/kg)
+	END DO
 
   !============== Output results == end ==============
   !=====================================================
-
 
   ! --------------------------------------------------------------------------
   ! 8. Deallocate all RTTOV arrays and structures
@@ -598,15 +433,5 @@ include "rttov_skipcommentline.interface"
   IF (errorstatus /= errorstatus_success) THEN
     WRITE(*,*) 'coefs deallocation error'
   ENDIF
-
-
-! Format definitions for output
-111  FORMAT(1X,10I8)
-1115 FORMAT(3X,10I8)
-222  FORMAT(1X,10F8.2)
-444  FORMAT(1X,10F8.3)
-4444 FORMAT(1X,10F8.4)
-4445 FORMAT(1X,I2,10F8.4)
-777  FORMAT(/,A,A9,I3)
 
 END SUBROUTINE rttov_fwd_jacobian
