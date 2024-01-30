@@ -52,48 +52,48 @@ INTEGER ::  nLayEff
 INTEGER ::  iter,ich
 
 ! 0.25*0.25
-! LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
-! LambdaEM(2,:)=(/0.,0.0625,0.,0.,0.,0.,0.,0.,0./)
-! LambdaEM(3,:)=(/0.,0.,0.0625,0.,0.,0.,0.,0.,0./)
-! LambdaEM(4,:)=(/0.,0.,0.,0.0625,0.,0.,0.,0.,0./)
-! LambdaEM(5,:)=(/0.,0.,0.,0.,0.0625,0.,0.,0.,0./)
-! LambdaEM(6,:)=(/0.,0.,0.,0.,0.,0.0625,0.,0.,0./)
-! LambdaEM(7,:)=(/0.,0.,0.,0.,0.,0.,0.0625,0.,0./)
-! LambdaEM(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.0625,0./)
-! LambdaEM(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.0625/)
+LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
+LambdaEM(2,:)=(/0.,0.0625,0.,0.,0.,0.,0.,0.,0./)
+LambdaEM(3,:)=(/0.,0.,0.0625,0.,0.,0.,0.,0.,0./)
+LambdaEM(4,:)=(/0.,0.,0.,0.0625,0.,0.,0.,0.,0./)
+LambdaEM(5,:)=(/0.,0.,0.,0.,0.0625,0.,0.,0.,0./)
+LambdaEM(6,:)=(/0.,0.,0.,0.,0.,0.0625,0.,0.,0./)
+LambdaEM(7,:)=(/0.,0.,0.,0.,0.,0.,0.0625,0.,0./)
+LambdaEM(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.0625,0./)
+LambdaEM(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.0625/)
 
 ! NEDT*NEDT
-! LambdaTB(1,:)=(/0.77,0.,0.,0.,0.,0.,0.,0.,0./)
-! LambdaTB(2,:)=(/0.,0.78,0.,0.,0.,0.,0.,0.,0./)
-! LambdaTB(3,:)=(/0.,0.,0.63,0.,0.,0.,0.,0.,0./)
-! LambdaTB(4,:)=(/0.,0.,0.,0.60,0.,0.,0.,0.,0./)
-! LambdaTB(5,:)=(/0.,0.,0.,0.,0.51,0.,0.,0.,0./)
-! LambdaTB(6,:)=(/0.,0.,0.,0.,0.,0.41,0.,0.,0./)
-! LambdaTB(7,:)=(/0.,0.,0.,0.,0.,0.,0.42,0.,0./)
-! LambdaTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.32,0./)
-! LambdaTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.31/)
+LambdaTB(1,:)=(/0.77,0.,0.,0.,0.,0.,0.,0.,0./)
+LambdaTB(2,:)=(/0.,0.78,0.,0.,0.,0.,0.,0.,0./)
+LambdaTB(3,:)=(/0.,0.,0.63,0.,0.,0.,0.,0.,0./)
+LambdaTB(4,:)=(/0.,0.,0.,0.60,0.,0.,0.,0.,0./)
+LambdaTB(5,:)=(/0.,0.,0.,0.,0.51,0.,0.,0.,0./)
+LambdaTB(6,:)=(/0.,0.,0.,0.,0.,0.41,0.,0.,0./)
+LambdaTB(7,:)=(/0.,0.,0.,0.,0.,0.,0.42,0.,0./)
+LambdaTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.32,0./)
+LambdaTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.31/)
 
 
 !! transform matrix
-! Uem(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
-! Uem(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
-! Uem(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
-! Uem(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
-! Uem(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
-! Uem(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
-! Uem(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
-! Uem(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
-! Uem(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
+Uem(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
+Uem(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
+Uem(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
+Uem(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
+Uem(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
+Uem(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
+Uem(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
+Uem(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
+Uem(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
 
-! UTB(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
-! UTB(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
-! UTB(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
-! UTB(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
-! UTB(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
-! UTB(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
-! UTB(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
-! UTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
-! UTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
+UTB(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
+UTB(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
+UTB(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
+UTB(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
+UTB(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
+UTB(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
+UTB(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
+UTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
+UTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
 
  
  !! load precalculate error covariance matrix and EOF EigenVectorMatrix
@@ -479,13 +479,14 @@ UTa(29,:)=(/0.987253,      0.0793131,   -0.0418795,   0.0881041,  0.0683952,    
 !! RTTOV forward simulation.
 
 !! Determine the layer number:  
-  nLayEff=nlevel
   CALL DeterminNlayEff(nlevel,PLEVEL,SfcPress,nLayEff)
+  
 !! modified Covar of bottom layers 
   CALL DisabLayBelowSfc(nlevel,nLayEff,CovQw)
   CALL DisabLayBelowSfc(nlevel,nLayEff,CovTa)
-  ! print*,SaAtm
-
+  UQw(nLayEff+1:nlevel,:)=0.
+  UTa(nLayEff+1:nlevel,:)=0.
+  
 !! transform to Covars in EOF space
   CALL ProjCov(nEOF,nlevel,UQw,CovQw,LambdaQw)
   CALL ProjCov(nEOF,nlevel,UTa,CovTa,LambdaTa)
@@ -525,32 +526,27 @@ Lambda(9:16,9:16)=LambdaQW
 Lambda(17,17)=12.773  !! k*k   Stdev^2 
 Lambda(18:26,18:26)=LambdaEM
 
-
-
-!!! perform a inital clear sky forward modeling to get the emissivity 1st guess, the analytic emissivity solution.
-
-  call rttov_fwd_clearsky(imonth,nLayEff,nchannel,incident,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
+!!! perform a inital clear sky forward modeling to get the emissivity 1st guess, and analytical emissivity solution.
+CALL rttov_fwd_clearsky(imonth,nLayEff,nchannel,incident,longitude,latitude,plevel(1:nLayEff),phalf(1:nLayEff),&
   				QWatm(1:nLayEff),Tatm(1:nLayEff),LST,SfcPress,T2m,Snowc,Smc,TBobs,EmissAnalyt,Emiss1st)
  
+LstTune	=	LST
+TbTune	=	TBobs
+nIters	=	0				
 
-  ! Write(*,*) 'Emiss1st, ','EmissAnalyt'
-  ! do ich=1,9
-	! print*, Emiss1st(ich),EmissAnalyt(ich)
-  ! end do
-
-  LstTune	=	LST
-  TbTune	=	TBobs
-  nIters	=	0				
-
-  DO WHILE (.True.)
+DO WHILE (.True.)
 	nIters=nIters+1
 
 	! input emissin, Tatm, QWatm,
 	! output jacobian matrix	
 	CALL rttov_fwd_jacobian(nLayEff,nchannel,incident,plevel(1:nLayEff),&
-				QWatm(1:nLayEff),Tatm(1:nLayEff),LstTune,T2m,Emiss1st,TbTune,Emss_K,Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),LST_K)
-
-	! open(10,file="1st_iter_params.md")
+				  QWatm(1:nLayEff),Tatm(1:nLayEff),LstTune,T2m,Emiss1st,&
+				  TbTune,Emss_K,Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),LST_K)
+	
+    CALL Convgce(ChanSel,tb(1:nchan),Y(1:nchan,0),NoiseRMS(1:nchan)+   &
+	ModelErr(1:nchan),ChiSq(0),CvgceReached,TunParams(iattempt)%ChiSqThresh,dY2)  
+	IF (CvgceReached) EXIT AttemptsLoop
+		! open(10,file="1st_iter_params.md")
 		! Write(10,*) '## nLayEff = ',nLayEff,' '
 		! Write(10,*) '| Emiss TELSEM  |  Emiss Analytical  |  TbTune (K)  |  TBobs (K) |  '
 		! Write(10,*) '|:-------|:-------|:-------|:-------|  '
@@ -559,11 +555,10 @@ Lambda(18:26,18:26)=LambdaEM
 		! end do
 		! Write(10,*) '--- ' 
 		! Write(10,*) '| Emss_K (K/ )  |    LST_K (K/K) |  '
-				! Write(10,*) '|:-------|:-------|  '
+			! Write(10,*) '|:-------|:-------|  '
 		! do ich=1,9
 			! Write(10,*) '| ',Emss_K(ich),'| ',LST_K(ich),' | '
-		! end do
-		
+		! end do		
 		! do ifr=1,9
 			! Write(10,*) '--- ' 
 			! Write(10,*) '## CH:' ,ifr
@@ -573,10 +568,8 @@ Lambda(18:26,18:26)=LambdaEM
 				! Write(10,*) '| ',Ta_K(ifr,ilv),' | ',Qw_K(ifr,ilv),' |  '
 			! end do
 		! end do
-
-	! close(10)
+		! close(10)
 	
-	stop
 	!! decide the chisq -- the criterion of Iteration stop
 
 	!! transform Jacobians to EOF space
@@ -587,12 +580,14 @@ Lambda(18:26,18:26)=LambdaEM
 	!! DX=U#DXTilda
 
 	!! update Update Ta, Qw, Em, LST in GEO space
-	
+	print*, nIters
 	IF (nIters.ge.20) GOTO 221 
 END DO
 
+
 221 continue		
 ! return EmissAnalyt,Emiss1st,Em1DVar,LstTune,nIters
+stop 
 
 end subroutine retrieve_core_1dvar
 
@@ -623,7 +618,7 @@ SUBROUTINE DisabLayBelowSfc(nLay,nLayEff,SaAtm)
   SaAtm(:,nLayEff+1:nLay)  =0.
   !! covar to high value
   Do i=nLayEff+1,nLay
-     SaAtm(i,i) =1000.   
+     SaAtm(i,i) =0.   
 	 !! The source code of MIRS set it to 0., Here we set it to a large number for large uncertainty
   ENDDO
 	
