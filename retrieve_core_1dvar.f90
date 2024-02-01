@@ -548,11 +548,9 @@ DO WHILE (.True.)
 				  TbTune,Emss_K,Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),LST_K)
 	
 	CALL Convgce(nchannel,TBobs,TbTune,EY,ChiSq,CvgceReached,ChiSqThresh)
+	print*, nIters, ChiSq
 	IF (CvgceReached) GOTO 221  
-	
-	
-	
-	
+		
 	
 		! open(10,file="1st_iter_params.md")
 		! Write(10,*) '## nLayEff = ',nLayEff,' '
