@@ -29,6 +29,7 @@ INTEGER,					intent(OUT) :: nIters
 
 real, 	dimension(nchannel)				:: Emss_K,LST_K
 real, 	dimension(nchannel,nlevel)		:: Ta_K,Qw_K
+real, 	dimension(nchannel,68)			:: Ja
 
 !!! covariance
 integer,	parameter					:: nEOF=8
@@ -38,7 +39,7 @@ real, 		dimension(nlevel,nEOF)		:: UQw, UTa
 !! cov in EOF space
 real, 		dimension(nEOF,nEOF)		:: LambdaQw,LambdaTa
 
-real, 		dimension(nchannel)			:: EY=(/0.77,0.78,0.63,0.60,0.51,0.41,0.42,0.32,0.31/)  !! noise^2
+real, 		dimension(nchannel)         :: EY
 
 !! TB and EMissivity
 real, dimension(nchannel,nchannel)      :: LambdaEM  !! 0.25*0.25
@@ -47,6 +48,7 @@ real, dimension(nchannel,nchannel)		:: Uem, UTB
 
 !! Total tranform EigenVectorMatrix and EigenValueMatrix
 real, dimension(68,26)      			:: Utotal
+real, dimension(68)      				:: Xb, Xg, DX
 REAL, dimension(26,26)					:: Lambda
 integer :: file_unit
 
@@ -55,6 +57,11 @@ INTEGER ::  iter,ich
 LOGICAL ::  CvgceReached
 REAL, parameter ::  ChiSqThresh=1.0
 
+
+!! departures 
+REAL, DIMENSION(nchannel) :: dY2
+
+EY=(/0.77,0.78,0.63,0.60,0.51,0.41,0.42,0.32,0.31/)  
 
 ! 0.25*0.25
 LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
@@ -538,19 +545,90 @@ LstTune	=	LST
 TbTune	=	TBobs
 nIters	=	0				
 
+Xg=0.0
+Xg(1:nLayEff)=Tatm(1:nLayEff)
+Xg(nlevel+1:nlevel+nLayEff)=QWatm(1:nLayEff)
+Xg(nlevel+nlevel+1)=LstTune
+Xg(nlevel+nlevel+2:nlevel+nlevel+10)=Emiss1st
+Xb=Xg
+
+Ja=0.0
+
 DO WHILE (.True.)
 	nIters=nIters+1
 
 	! input emissin, Tatm, QWatm,
 	! output jacobian matrix	
 	CALL rttov_fwd_jacobian(nLayEff,nchannel,incident,plevel(1:nLayEff),&
-				  QWatm(1:nLayEff),Tatm(1:nLayEff),LstTune,T2m,Emiss1st,&
-				  TbTune,Emss_K,Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),LST_K)
+				  Xg(nlevel+1:nlevel+nLayEff),Xg(1:nLayEff),Xg(nlevel+nlevel+1),T2m,Xg(nlevel+nlevel+2:nlevel+nlevel+10),&
+				  TbTune,Emss_K,&
+				  Ja(:, 1:nLayEff),Ja(:, nlevel+1:nlevel+nLayEff),Ja(:, nlevel+nlevel+1))
+				  
+    ! Ja(:, 1:nLayEff)=Ta_K(:,1:nLayEff)
+    ! Ja(:, nlevel+1:nlevel+nLayEff)=Qw_K(:,1:nLayEff)
+    ! Ja(:, nlevel+nlevel+1)=LST_K
 	
-	CALL Convgce(nchannel,TBobs,TbTune,EY,ChiSq,CvgceReached,ChiSqThresh)
-	print*, nIters, ChiSq
-	IF (CvgceReached) GOTO 221  
+	do ich=1,nchannel
+		Ja(nlevel+nlevel+1+ich, nlevel+nlevel+1+ich)=Emss_K(ich)
+	end do
 		
+	!! check for convergence 
+	CALL Convgce(nchannel,TBobs,TbTune,EY,ChiSq,CvgceReached,ChiSqThresh,dY2)
+	print*, nIters, ChiSq, dY2
+	IF (CvgceReached) GOTO 221  
+
+
+	!! compute departures of Geoproperties
+	DX = Xg - Xb
+	
+	!---Transform K and DX into EOF space
+	Ktilda  = matmul(Ja,Utotal)
+    DXtilda = matmul(transpose(Utotal),DX)
+	
+    !---Compute the Levenberg-Marquardt optimal solution 
+	
+    Q = MATMUL(dble(Ja),MATMUL(dble(Lambda),TRANSPOSE(dble(Ja))))
+    Q = dble(LambdaTB) + Q
+    Q = MATINV_dbl(Q)
+    G = REAL(MATMUL(dble(Lambda),MATMUL(TRANSPOSE(dble(Ja)),Q)))
+	
+    B=(TBobs-TbTune+matmul(Ktilda,DXtilda))
+    DXtildaNew = matmul(G,B)	
+
+	REAL*8, dimension(nchannel,nchannel) :: Q
+	REAL, dimension(26,nchannel) :: G
+	REAL,    DIMENSION(nch)      :: B
+	REAL,    DIMENSION(nchannel) ::DXtildaNew, DXtilda
+	REAL,    DIMENSION(nchannel,26) :: Ktilda
+	REAL,    DIMENSION(26) :: DXtilda
+
+    ! call CompContribFcts_dbl(nR,nch,Lambda,Ktilda,SeStar+FeStar,G)
+  ! SUBROUTINE CompContribFcts_dbl(np,nc,Sa,K,Serr,G)
+    ! ---Input/Output variables
+    ! INTEGER                :: np,nc
+    ! REAL, DIMENSION(:,:)   :: Sa,K,Serr,G
+    ! ---Local variables
+    ! REAL(SELECTED_REAL_KIND(15) ), DIMENSION(nc,nc) :: Q
+    
+    ! Q(1:nc,1:nc) = MATMUL(dble(K),MATMUL(dble(Sa),TRANSPOSE(dble(K))))
+    ! Q(1:nc,1:nc) = dble(Serr(1:nc,1:nc)) + Q(1:nc,1:nc)
+    ! Q(1:nc,1:nc) = MATINV_dbl(Q(1:nc,1:nc))
+    ! G(1:np,1:nc) = REAL(MATMUL(dble(Sa),MATMUL(TRANSPOSE(dble(K)),Q)))
+    ! RETURN
+  ! END SUBROUTINE CompContribFcts_dbl
+
+
+
+
+		
+    !---Transform DXtildaNew into Geophysical space
+    call transfEOF2Geo(Ustar(1:nGselec,1:nR),DXtildanew(1:nR),DX(1:nGselec), nGselec,nR)
+	   
+    !---Compute geophysical vector 
+    call ComputeGeoX(DX(1:nGselec),Xb(1:nGselec),Xg(1:nGselec,iter+1))
+    
+	
+	
 	
 		! open(10,file="1st_iter_params.md")
 		! Write(10,*) '## nLayEff = ',nLayEff,' '
@@ -644,15 +722,16 @@ SUBROUTINE ProjCov(nR,nG,Ustar,Sa,Lambda)
   RETURN
 END SUBROUTINE ProjCov
 
-SUBROUTINE Convgce(nchan,Ym,Y,EY,ChiSq,CvgceReached,ChiSqThresh)
+SUBROUTINE Convgce(nchan,Ym,Y,EY,ChiSq,CvgceReached,ChiSqThresh,dY2)
   INTEGER               :: nchan,nch,ichan
-  REAL,  DIMENSION(nchan) :: Ym,Y,EY
+  REAL,  DIMENSION(nchan) :: Ym,Y,EY,dY2
   ! INTEGER, DIMENSION(:) :: ChanSel
-  REAL                  :: ChiSq,ChiSqThresh,dY2
+  REAL                  :: ChiSq,ChiSqThresh
   LOGICAL               :: CvgceReached
 
   ChiSq = 0.
   DO ichan=1,nchan
+	 dY2(ichan) = 0.
      dY2(ichan)= (Ym(ichan)-Y(ichan))**2.
      ChiSq=ChiSq+dY2(ichan)/EY(ichan)
   ENDDO
@@ -661,3 +740,52 @@ SUBROUTINE Convgce(nchan,Ym,Y,EY,ChiSq,CvgceReached,ChiSqThresh)
   IF (ChiSq.le.ChiSqThresh) CvgceReached=.TRUE.
   RETURN
 END SUBROUTINE Convgce
+
+  FUNCTION matinv_dbl(A)
+    ! Invert matrix by Gauss method
+    ! --------------------------------------------------------------------
+    IMPLICIT NONE
+    INTEGER :: n
+    REAL*8, intent(in),dimension(:,:) :: a
+    REAL*8, dimension(size(a,1),size(a,2)) :: b
+    REAL*8, dimension(size(a,1),size(a,2)) :: matinv_dbl
+    REAL*8, dimension(size(a,1)) :: temp
+    ! - - - Local Variables - - -
+    REAL*8 :: c, d
+    INTEGER :: i, j, k, m, imax(1), ipvt(size(a,1))
+    ! - - - - - - - - - - - - - -
+    b = a
+    n=size(a,1)
+    matinv_dbl=a
+    ipvt = (/ (i, i = 1, n) /)
+    ! Go into loop- b, the inverse, is initialized equal to a above
+    DO k = 1,n
+       ! Find the largest value and position of that value
+       imax = MAXLOC(ABS(b(k:n,k)))
+       m = k-1+imax(1)
+       !   sigular matrix check
+       if(ABS(b(m,k)).LE.(1.D-40)) then
+          !CALL ErrHandl(ErrorType,Err_SingularMatrx,'')
+          matinv_dbl(1,1) = -99999999.0
+          return 
+       ENDIF
+       ! get the row beneath the current row if the current row will
+       ! not compute
+       IF (m .ne. k) THEN
+          ipvt( (/m,k/) ) = ipvt( (/k,m/) )
+          b((/m,k/),:) = b((/k,m/),:)
+       END IF
+       ! d is a coefficient - brings the pivot value to one and then is applied
+       ! to the rest of the row
+       d = 1/b(k,k)
+       temp = b(:,k)
+       DO j = 1, n
+          c = b(k,j)*d
+          b(:,j) = b(:,j)-temp*c
+          b(k,j) = c
+       END DO
+       b(:,k) = temp*(-d)
+       b(k,k) = d
+    END DO
+    matinv_dbl(:,ipvt) = b
+  END FUNCTION matinv_dbl
