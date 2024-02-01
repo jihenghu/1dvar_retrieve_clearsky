@@ -38,10 +38,12 @@ real, 		dimension(nlevel,nEOF)		:: UQw, UTa
 !! cov in EOF space
 real, 		dimension(nEOF,nEOF)		:: LambdaQw,LambdaTa
 
+real, 		dimension(nchannel)			:: EY=(/0.77,0.78,0.63,0.60,0.51,0.41,0.42,0.32,0.31/)  !! noise^2
+
 !! TB and EMissivity
-real, dimension(9,9)  					:: LambdaEM  !! 0.25*0.25
-real, dimension(9,9)  					:: LambdaTB  !! NEDT*NEDT
-real, dimension(9,9)					:: Uem, UTB
+real, dimension(nchannel,nchannel)      :: LambdaEM  !! 0.25*0.25
+real, dimension(nchannel,nchannel)  	:: LambdaTB  !! NEDT*NEDT
+real, dimension(nchannel,nchannel)		:: Uem, UTB
 
 !! Total tranform EigenVectorMatrix and EigenValueMatrix
 real, dimension(68,26)      			:: Utotal
@@ -50,6 +52,9 @@ integer :: file_unit
 
 INTEGER ::  nLayEff
 INTEGER ::  iter,ich
+LOGICAL ::  CvgceReached
+REAL, parameter ::  ChiSqThresh=1.0
+
 
 ! 0.25*0.25
 LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
@@ -72,7 +77,6 @@ LambdaTB(6,:)=(/0.,0.,0.,0.,0.,0.41,0.,0.,0./)
 LambdaTB(7,:)=(/0.,0.,0.,0.,0.,0.,0.42,0.,0./)
 LambdaTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.32,0./)
 LambdaTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.31/)
-
 
 !! transform matrix
 Uem(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
@@ -543,9 +547,13 @@ DO WHILE (.True.)
 				  QWatm(1:nLayEff),Tatm(1:nLayEff),LstTune,T2m,Emiss1st,&
 				  TbTune,Emss_K,Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),LST_K)
 	
-    CALL Convgce(ChanSel,tb(1:nchan),Y(1:nchan,0),NoiseRMS(1:nchan)+   &
-	ModelErr(1:nchan),ChiSq(0),CvgceReached,TunParams(iattempt)%ChiSqThresh,dY2)  
-	IF (CvgceReached) EXIT AttemptsLoop
+	CALL Convgce(nchannel,TBobs,TbTune,EY,ChiSq,CvgceReached,ChiSqThresh)
+	IF (CvgceReached) GOTO 221  
+	
+	
+	
+	
+	
 		! open(10,file="1st_iter_params.md")
 		! Write(10,*) '## nLayEff = ',nLayEff,' '
 		! Write(10,*) '| Emiss TELSEM  |  Emiss Analytical  |  TbTune (K)  |  TBobs (K) |  '
@@ -580,7 +588,7 @@ DO WHILE (.True.)
 	!! DX=U#DXTilda
 
 	!! update Update Ta, Qw, Em, LST in GEO space
-	print*, nIters
+
 	IF (nIters.ge.20) GOTO 221 
 END DO
 
@@ -608,18 +616,15 @@ SUBROUTINE DisabLayBelowSfc(nLay,nLayEff,SaAtm)
   REAL, DIMENSION(nLay,nLay) :: SaAtm
   REAl                 :: SfcPress
   INTEGER              :: nLayEff,i,nLay,iattempt
-
   !---Disable retrieval of below-sfc layers by setting covar to high value and decorrel.
-
   !! TOA(1) -> srf(nLayEff) -> bottom (nLay)
-	
   !! decorrel.
   SaAtm(nLayEff+1:nLay,:)  =0.
   SaAtm(:,nLayEff+1:nLay)  =0.
   !! covar to high value
   Do i=nLayEff+1,nLay
      SaAtm(i,i) =0.   
-	 !! The source code of MIRS set it to 0., Here we set it to a large number for large uncertainty
+	 !! The source code of MIRS set it to 0., shouldnt we set it to a large number for large uncertainty?
   ENDDO
 	
   RETURN
@@ -641,3 +646,20 @@ SUBROUTINE ProjCov(nR,nG,Ustar,Sa,Lambda)
   RETURN
 END SUBROUTINE ProjCov
 
+SUBROUTINE Convgce(nchan,Ym,Y,EY,ChiSq,CvgceReached,ChiSqThresh)
+  INTEGER               :: nchan,nch,ichan
+  REAL,  DIMENSION(nchan) :: Ym,Y,EY
+  ! INTEGER, DIMENSION(:) :: ChanSel
+  REAL                  :: ChiSq,ChiSqThresh,dY2
+  LOGICAL               :: CvgceReached
+
+  ChiSq = 0.
+  DO ichan=1,nchan
+     dY2(ichan)= (Ym(ichan)-Y(ichan))**2.
+     ChiSq=ChiSq+dY2(ichan)/EY(ichan)
+  ENDDO
+  ChiSq=(ChiSq/nchan)
+  CvgceReached=.FALSE.
+  IF (ChiSq.le.ChiSqThresh) CvgceReached=.TRUE.
+  RETURN
+END SUBROUTINE Convgce
