@@ -59,6 +59,7 @@ include "rttov_skipcommentline.interface"
   real*4, dimension(nlevel),intent(in)  			:: vapor,temps
   
   real*4, dimension(nchannel),intent(in)			:: Emissin
+  real*4, dimension(nchannel)			:: Emissin_opt
   real*4, dimension(nchannel),intent(out)			:: TBout
   real*4, dimension(nchannel),intent(out)			:: Emss_K
   real*4, dimension(nchannel),intent(out)			:: LST_K
@@ -302,8 +303,11 @@ include "rttov_skipcommentline.interface"
   ! Calculate emissivity within RTTOV where the input emissivity value is
   ! zero or less (all channels in this case)
   ! calcemis(:) =(emissivity(:) % emis_in <= 0._jprb)
-  calcemis(:) =.False.   
-  emissivity(:) % emis_in = Emissin
+  calcemis(:) =.False.  
+	Emissin_opt=Emissin
+  ! where(Emissin.gt.1.0) Emissin_opt=1.0
+  ! where(Emissin.lt.0.0) Emissin_opt=0.0
+  emissivity(:) % emis_in = Emissin_opt
   ! Calculate reflectances within RTTOV where the input BRDF value is zero or
   ! less (all channels in this case)
   calcrefl(:) = (reflectance(:) % refl_in <= 0._jprb)

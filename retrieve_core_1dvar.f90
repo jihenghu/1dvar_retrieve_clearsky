@@ -27,9 +27,11 @@ real,						intent(OUT)	:: LstTune
 INTEGER,					intent(OUT) :: nIters
 
 
+
+INTEGER, parameter :: nG=68, nR=26
 real, 	dimension(nchannel)				:: Emss_K,LST_K
 real, 	dimension(nchannel,nlevel)		:: Ta_K,Qw_K
-real, 	dimension(nchannel,68)			:: Ja
+real, 	dimension(nchannel,nG)			:: Ja
 
 !!! covariance
 integer,	parameter					:: nEOF=8
@@ -47,13 +49,20 @@ real, dimension(nchannel,nchannel)  	:: LambdaTB  !! NEDT*NEDT
 real, dimension(nchannel,nchannel)		:: Uem, UTB
 
 !! Total tranform EigenVectorMatrix and EigenValueMatrix
-real, dimension(68,26)      			:: Utotal
-real, dimension(68)      				:: Xb, Xg, DX
-REAL, dimension(26,26)					:: Lambda
+real, dimension(nG,nR)      			:: Utotal
+real, dimension(nG)      				:: Xb, Xg, DX
+REAL, dimension(nR,nR)					:: Lambda
+
+REAL*8, dimension(nchannel,nchannel) :: Q,invM
+REAL, dimension(nR,nchannel) :: G
+REAL,    DIMENSION(nchannel)      :: B
+REAL,    DIMENSION(nchannel,nR) :: Ktilda
+REAL,    DIMENSION(nR) :: DXtilda,DXtildaNew
+
 integer :: file_unit
 
 INTEGER ::  nLayEff
-INTEGER ::  iter,ich
+INTEGER ::  iter,ich,i,j
 LOGICAL ::  CvgceReached
 REAL, parameter ::  ChiSqThresh=1.0
 
@@ -529,7 +538,7 @@ Utotal=0.0
 Utotal(1:29,1:8)=UTa
 Utotal(30:58,9:16)=UQw
 Utotal(59:59,17:17)=1.0   !! LST
-Utotal(60:68,18:26)=Uem   !! emissivity
+Utotal(60:nG,18:26)=Uem   !! emissivity
 
 Lambda=0.0
 Lambda(1:8,1:8)=LambdaTA
@@ -545,12 +554,12 @@ LstTune	=	LST
 TbTune	=	TBobs
 nIters	=	0				
 
-Xg=0.0
-Xg(1:nLayEff)=Tatm(1:nLayEff)
-Xg(nlevel+1:nlevel+nLayEff)=QWatm(1:nLayEff)
-Xg(nlevel+nlevel+1)=LstTune
-Xg(nlevel+nlevel+2:nlevel+nlevel+10)=Emiss1st
-Xb=Xg
+Xb=0.0
+Xb(1:nLayEff)=Tatm(1:nLayEff)
+Xb(nlevel+1:nlevel+nLayEff)=QWatm(1:nLayEff)
+Xb(nlevel+nlevel+1)=LstTune
+Xb(nlevel+nlevel+2:nlevel+nlevel+10)=EmissAnalyt
+Xg=Xb+0.01
 
 Ja=0.0
 
@@ -574,104 +583,64 @@ DO WHILE (.True.)
 		
 	!! check for convergence 
 	CALL Convgce(nchannel,TBobs,TbTune,EY,ChiSq,CvgceReached,ChiSqThresh,dY2)
-	print*, nIters, ChiSq, dY2
+	! print*, nIters, dY2
+
 	IF (CvgceReached) GOTO 221  
 
 
 	!! compute departures of Geoproperties
 	DX = Xg - Xb
-	
+
 	!---Transform K and DX into EOF space
 	Ktilda  = matmul(Ja,Utotal)
     DXtilda = matmul(transpose(Utotal),DX)
-	
+
     !---Compute the Levenberg-Marquardt optimal solution 
-	
-    Q = MATMUL(dble(Ja),MATMUL(dble(Lambda),TRANSPOSE(dble(Ja))))
+    Q = MATMUL(dble(Ktilda),MATMUL(dble(Lambda),TRANSPOSE(dble(Ktilda))))
     Q = dble(LambdaTB) + Q
-    Q = MATINV_dbl(Q)
-    G = REAL(MATMUL(dble(Lambda),MATMUL(TRANSPOSE(dble(Ja)),Q)))
+    ! Q = matinv_dbl(Q)
+	CALL matinv_dbl(Q,invM,nchannel)
+    G = REAL(MATMUL(dble(Lambda),MATMUL(TRANSPOSE(dble(Ktilda)),invM)))
+    B=TBobs-TbTune+matmul(Ktilda,DXtilda)
 	
-    B=(TBobs-TbTune+matmul(Ktilda,DXtilda))
     DXtildaNew = matmul(G,B)	
 
-	REAL*8, dimension(nchannel,nchannel) :: Q
-	REAL, dimension(26,nchannel) :: G
-	REAL,    DIMENSION(nch)      :: B
-	REAL,    DIMENSION(nchannel) ::DXtildaNew, DXtilda
-	REAL,    DIMENSION(nchannel,26) :: Ktilda
-	REAL,    DIMENSION(26) :: DXtilda
-
-    ! call CompContribFcts_dbl(nR,nch,Lambda,Ktilda,SeStar+FeStar,G)
-  ! SUBROUTINE CompContribFcts_dbl(np,nc,Sa,K,Serr,G)
-    ! ---Input/Output variables
-    ! INTEGER                :: np,nc
-    ! REAL, DIMENSION(:,:)   :: Sa,K,Serr,G
-    ! ---Local variables
-    ! REAL(SELECTED_REAL_KIND(15) ), DIMENSION(nc,nc) :: Q
-    
-    ! Q(1:nc,1:nc) = MATMUL(dble(K),MATMUL(dble(Sa),TRANSPOSE(dble(K))))
-    ! Q(1:nc,1:nc) = dble(Serr(1:nc,1:nc)) + Q(1:nc,1:nc)
-    ! Q(1:nc,1:nc) = MATINV_dbl(Q(1:nc,1:nc))
-    ! G(1:np,1:nc) = REAL(MATMUL(dble(Sa),MATMUL(TRANSPOSE(dble(K)),Q)))
-    ! RETURN
-  ! END SUBROUTINE CompContribFcts_dbl
+! REAL*8, dimension(nchannel,nchannel) :: Q,invM
+! REAL, dimension(nR,nchannel) :: G
+! REAL,    DIMENSION(nchannel)      :: B
+! REAL,    DIMENSION(nchannel,nR) :: Ktilda
+! REAL,    DIMENSION(nR) :: DXtilda,DXtildaNew
 
 
 
-
-		
     !---Transform DXtildaNew into Geophysical space
-    call transfEOF2Geo(Ustar(1:nGselec,1:nR),DXtildanew(1:nR),DX(1:nGselec), nGselec,nR)
-	   
+    DO i=1,nG
+       DX(i)=0.
+       DO j=1,nR
+          DX(i)=DX(i)+Utotal(i,j)*DXtildaNew(j)
+       ENDDO
+    ENDDO
+
     !---Compute geophysical vector 
-    call ComputeGeoX(DX(1:nGselec),Xb(1:nGselec),Xg(1:nGselec,iter+1))
-    
-	
-	
-	
-		! open(10,file="1st_iter_params.md")
-		! Write(10,*) '## nLayEff = ',nLayEff,' '
-		! Write(10,*) '| Emiss TELSEM  |  Emiss Analytical  |  TbTune (K)  |  TBobs (K) |  '
-		! Write(10,*) '|:-------|:-------|:-------|:-------|  '
-		! do ich=1,9
-			! Write(10,*)'| ', Emiss1st(ich),'| ',EmissAnalyt(ich),'| ',TbTune(ich),'| ',TBobs(ich),' |  '
-		! end do
-		! Write(10,*) '--- ' 
-		! Write(10,*) '| Emss_K (K/ )  |    LST_K (K/K) |  '
-			! Write(10,*) '|:-------|:-------|  '
-		! do ich=1,9
-			! Write(10,*) '| ',Emss_K(ich),'| ',LST_K(ich),' | '
-		! end do		
-		! do ifr=1,9
-			! Write(10,*) '--- ' 
-			! Write(10,*) '## CH:' ,ifr
-			! Write(10,*) '| Ta_K (K/K) |   Qw_K (K/(kg/kg) |  '
-			! Write(10,*) '|:-------|:-------|  '
-			! do ilv=1,29
-				! Write(10,*) '| ',Ta_K(ifr,ilv),' | ',Qw_K(ifr,ilv),' |  '
-			! end do
-		! end do
-		! close(10)
-	
-	!! decide the chisq -- the criterion of Iteration stop
+	Xb=Xg
+	Xg = Xg + DX
 
-	!! transform Jacobians to EOF space
-	!! compute DX in EOF space
-	!! DXTilda
-
-	!! project to geophysical states space
-	!! DX=U#DXTilda
-
-	!! update Update Ta, Qw, Em, LST in GEO space
-
+	print*, Xg(nlevel+nlevel+2:nlevel+nlevel+10)
+	print*, DX(nlevel+nlevel+2:nlevel+nlevel+10)
+	
 	IF (nIters.ge.20) GOTO 221 
 END DO
 
+stop
 
 221 continue		
 ! return EmissAnalyt,Emiss1st,Em1DVar,LstTune,nIters
 stop 
+
+
+
+
+
 
 end subroutine retrieve_core_1dvar
 
@@ -741,22 +710,22 @@ SUBROUTINE Convgce(nchan,Ym,Y,EY,ChiSq,CvgceReached,ChiSqThresh,dY2)
   RETURN
 END SUBROUTINE Convgce
 
-  FUNCTION matinv_dbl(A)
+subroutine matinv_dbl(A,retM,nch)
     ! Invert matrix by Gauss method
     ! --------------------------------------------------------------------
     IMPLICIT NONE
-    INTEGER :: n
-    REAL*8, intent(in),dimension(:,:) :: a
-    REAL*8, dimension(size(a,1),size(a,2)) :: b
-    REAL*8, dimension(size(a,1),size(a,2)) :: matinv_dbl
-    REAL*8, dimension(size(a,1)) :: temp
+    INTEGER :: n,nch
+    REAL*8, intent(in),dimension(nch,nch) :: A
+    REAL*8, dimension(size(A,1),size(A,2)) :: b
+    REAL*8, intent(out), dimension(size(A,1),size(A,2)) :: retM
+    REAL*8, dimension(size(A,1)) :: temp
     ! - - - Local Variables - - -
-    REAL*8 :: c, d
-    INTEGER :: i, j, k, m, imax(1), ipvt(size(a,1))
+    REAL( SELECTED_REAL_KIND(15) ) :: c, d
+    INTEGER :: i, j, k, m, imax(1), ipvt(size(A,1))
     ! - - - - - - - - - - - - - -
-    b = a
-    n=size(a,1)
-    matinv_dbl=a
+    b = A
+    n=size(A,1)
+    retM=A
     ipvt = (/ (i, i = 1, n) /)
     ! Go into loop- b, the inverse, is initialized equal to a above
     DO k = 1,n
@@ -766,7 +735,7 @@ END SUBROUTINE Convgce
        !   sigular matrix check
        if(ABS(b(m,k)).LE.(1.D-40)) then
           !CALL ErrHandl(ErrorType,Err_SingularMatrx,'')
-          matinv_dbl(1,1) = -99999999.0
+          retM(1,1) = -99999999.0
           return 
        ENDIF
        ! get the row beneath the current row if the current row will
@@ -787,5 +756,5 @@ END SUBROUTINE Convgce
        b(:,k) = temp*(-d)
        b(k,k) = d
     END DO
-    matinv_dbl(:,ipvt) = b
-  END FUNCTION matinv_dbl
+    retM(:,ipvt) = b 
+end subroutine matinv_dbl
