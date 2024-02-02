@@ -97,8 +97,11 @@ nIters	=	0
 Xb=0.0
 Xb(1)=LstTune
 Xb(2:10)=EmissAnalyt
+Xg=Xb
 
 Ja=0.0
+
+
 
 DO WHILE (.True.)
 	nIters=nIters+1
@@ -106,15 +109,15 @@ DO WHILE (.True.)
 	! input emissin, Tatm, QWatm,
 	! output jacobian matrix	
 	CALL rttov_fwd_jacobian(nLayEff,nchannel,incident,plevel(1:nLayEff),&
-				  Xg(nlevel+1:nlevel+nLayEff),Xg(1:nLayEff),Xg(nlevel+nlevel+1),T2m,Xg(nlevel+nlevel+2:nlevel+nlevel+10),&
-				  TbTune,Emss_K, Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),Ja(:,,1))
+				  QWatm(1:nLayEff),Tatm(1:nLayEff),Xg(1),T2m,Xg(2:10),&
+				  TbTune,Emss_K, Ta_K(:,1:nLayEff),Qw_K(:,1:nLayEff),Ja(:,1))
 				  
 	do ich=1,nchannel
 		Ja(1+ich, 1+ich)=Emss_K(ich)
 	end do
 		
 	CALL Convgce(nchannel,TBobs,TbTune,EY,ChiSq,CvgceReached,ChiSqThresh,dY2)
-	! print*, nIters, dY2
+	print*, nIters, dY2
 
 	IF (CvgceReached) GOTO 221  
 
