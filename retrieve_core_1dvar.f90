@@ -46,7 +46,7 @@ real, 		dimension(nchannel)         :: EY
 !! TB and EMissivity
 real, dimension(nchannel,nchannel)      :: LambdaEM  !! 0.25*0.25
 real, dimension(nchannel,nchannel)  	:: LambdaTB  !! NEDT*NEDT
-real, dimension(nchannel,nchannel)		:: Uem, UTB
+real, dimension(nchannel,nchannel)		:: Uem, UTB,CovEM,CovTB
 
 !! Total tranform EigenVectorMatrix and EigenValueMatrix
 real, dimension(nG,nR)      			:: Utotal
@@ -73,47 +73,51 @@ REAL, DIMENSION(nchannel) :: dY2
 EY=(/0.77,0.78,0.63,0.60,0.51,0.41,0.42,0.32,0.31/)  
 
 ! 0.25*0.25
-LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
-LambdaEM(2,:)=(/0.,0.0625,0.,0.,0.,0.,0.,0.,0./)
-LambdaEM(3,:)=(/0.,0.,0.0625,0.,0.,0.,0.,0.,0./)
-LambdaEM(4,:)=(/0.,0.,0.,0.0625,0.,0.,0.,0.,0./)
-LambdaEM(5,:)=(/0.,0.,0.,0.,0.0625,0.,0.,0.,0./)
-LambdaEM(6,:)=(/0.,0.,0.,0.,0.,0.0625,0.,0.,0./)
-LambdaEM(7,:)=(/0.,0.,0.,0.,0.,0.,0.0625,0.,0./)
-LambdaEM(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.0625,0./)
-LambdaEM(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.0625/)
+! LambdaEM(1,:)=(/0.0625,0.,0.,0.,0.,0.,0.,0.,0./)
+! LambdaEM(2,:)=(/0.,0.0625,0.,0.,0.,0.,0.,0.,0./)
+! LambdaEM(3,:)=(/0.,0.,0.0625,0.,0.,0.,0.,0.,0./)
+! LambdaEM(4,:)=(/0.,0.,0.,0.0625,0.,0.,0.,0.,0./)
+! LambdaEM(5,:)=(/0.,0.,0.,0.,0.0625,0.,0.,0.,0./)
+! LambdaEM(6,:)=(/0.,0.,0.,0.,0.,0.0625,0.,0.,0./)
+! LambdaEM(7,:)=(/0.,0.,0.,0.,0.,0.,0.0625,0.,0./)
+! LambdaEM(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.0625,0./)
+! LambdaEM(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.0625/)
 
 ! NEDT*NEDT
-LambdaTB(1,:)=(/0.77,0.,0.,0.,0.,0.,0.,0.,0./)
-LambdaTB(2,:)=(/0.,0.78,0.,0.,0.,0.,0.,0.,0./)
-LambdaTB(3,:)=(/0.,0.,0.63,0.,0.,0.,0.,0.,0./)
-LambdaTB(4,:)=(/0.,0.,0.,0.60,0.,0.,0.,0.,0./)
-LambdaTB(5,:)=(/0.,0.,0.,0.,0.51,0.,0.,0.,0./)
-LambdaTB(6,:)=(/0.,0.,0.,0.,0.,0.41,0.,0.,0./)
-LambdaTB(7,:)=(/0.,0.,0.,0.,0.,0.,0.42,0.,0./)
-LambdaTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.32,0./)
-LambdaTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.31/)
+CovTB(1,:)=(/0.77,0.,0.,0.,0.,0.,0.,0.,0./)
+CovTB(2,:)=(/0.,0.78,0.,0.,0.,0.,0.,0.,0./)
+CovTB(3,:)=(/0.,0.,0.63,0.,0.,0.,0.,0.,0./)
+CovTB(4,:)=(/0.,0.,0.,0.60,0.,0.,0.,0.,0./)
+CovTB(5,:)=(/0.,0.,0.,0.,0.51,0.,0.,0.,0./)
+CovTB(6,:)=(/0.,0.,0.,0.,0.,0.41,0.,0.,0./)
+CovTB(7,:)=(/0.,0.,0.,0.,0.,0.,0.42,0.,0./)
+CovTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,0.32,0./)
+CovTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,0.31/)
+
+LambdaTB=CovTB
+
+! 0.960     0.960     0.840     0.840     1.050     0.650     0.650     0.570     0.570 
 
 !! transform matrix
-Uem(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
-Uem(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
-Uem(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
-Uem(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
-Uem(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
-Uem(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
-Uem(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
-Uem(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
-Uem(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
+! Uem(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
+! Uem(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
+! Uem(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
+! Uem(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
+! Uem(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
+! Uem(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
+! Uem(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
+! Uem(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
+! Uem(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
 
-UTB(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
-UTB(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
-UTB(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
-UTB(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
-UTB(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
-UTB(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
-UTB(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
-UTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
-UTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
+! UTB(1,:)=(/1.,0.,0.,0.,0.,0.,0.,0.,0./)
+! UTB(2,:)=(/0.,1.,0.,0.,0.,0.,0.,0.,0./)
+! UTB(3,:)=(/0.,0.,1.,0.,0.,0.,0.,0.,0./)
+! UTB(4,:)=(/0.,0.,0.,1.,0.,0.,0.,0.,0./)
+! UTB(5,:)=(/0.,0.,0.,0.,1.,0.,0.,0.,0./)
+! UTB(6,:)=(/0.,0.,0.,0.,0.,1.,0.,0.,0./)
+! UTB(7,:)=(/0.,0.,0.,0.,0.,0.,1.,0.,0./)
+! UTB(8,:)=(/0.,0.,0.,0.,0.,0.,0.,1.,0./)
+! UTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
 
  
  !! load precalculate error covariance matrix and EOF EigenVectorMatrix
@@ -126,6 +130,31 @@ UTB(9,:)=(/0.,0.,0.,0.,0.,0.,0.,0.,1./)
  ! close(file_unit)
  
  !! Here we use built-in matrix, to avoid IO blocking in case of massive concurrant processes.
+
+
+CovEM(1,:) = (/0.0002, 0.0004, 0.0002, 0.0005, 0.0002, 0.0002, 0.0006, 0.0002, 0.0008/)
+CovEM(2,:) = (/0.0004, 0.0010, 0.0004, 0.0012, 0.0004, 0.0004, 0.0015, 0.0002, 0.0018/)
+CovEM(3,:) = (/0.0002, 0.0004, 0.0004, 0.0006, 0.0004, 0.0005, 0.0008, 0.0005, 0.0011/)
+CovEM(4,:) = (/0.0005, 0.0012, 0.0006, 0.0015, 0.0006, 0.0006, 0.0018, 0.0004, 0.0024/)
+CovEM(5,:) = (/0.0002, 0.0004, 0.0004, 0.0006, 0.0005, 0.0007, 0.0009, 0.0007, 0.0012/)
+CovEM(6,:) = (/0.0002, 0.0004, 0.0005, 0.0006, 0.0007, 0.0009, 0.0010, 0.0010, 0.0014/)
+CovEM(7,:) = (/0.0006, 0.0015, 0.0008, 0.0018, 0.0009, 0.0010, 0.0024, 0.0008, 0.0031/)
+CovEM(8,:) = (/0.0002, 0.0002, 0.0005, 0.0004, 0.0007, 0.0010, 0.0008, 0.0011, 0.0012/)
+CovEM(9,:) = (/0.0008, 0.0018, 0.0011, 0.0024, 0.0012, 0.0014, 0.0031, 0.0012, 0.0041/)
+
+
+! Transf. Matrix:
+Uem(1,:)=(/ 0.1424,  0.3290,  0.2261,  0.5251,  0.0963,  0.4486, -0.0147,  0.1819, -0.2390/)
+Uem(2,:)=(/ 0.1559,  0.3691, -0.2153, -0.5208, -0.1042, -0.0027, -0.0315,  0.0086,  0.2673/)
+Uem(3,:)=(/-0.0295,  0.0788, -0.1463,  0.0180,  0.5360, -0.6084,  0.0349,  0.2152, -0.0794/)
+Uem(4,:)=(/ 0.2086, -0.7870, -0.0441,  0.1478,  0.0519,  0.0048, -0.0028, -0.2148,  0.0553/)
+Uem(5,:)=(/ 0.0773, -0.0196,  0.6162, -0.3792, -0.3005, -0.0443,  0.0562, -0.2261, -0.1192/)
+Uem(6,:)=(/ 0.2082, -0.0118, -0.6095,  0.0875, -0.3988,  0.1919, -0.0383,  0.0661,  0.1038/)
+Uem(7,:)=(/-0.8848, -0.0479, -0.0967, -0.0164, -0.1010,  0.1511, -0.0084,  0.0146, -0.0638/)
+Uem(8,:)=(/-0.0305, -0.0951,  0.0586, -0.2684,  0.5592,  0.4637, -0.1150, -0.0376,  0.2548/)
+Uem(9,:)=(/ 0.0587,  0.2446,  0.2073,  0.3834, -0.0031, -0.1790, -0.0209, -0.2366,  0.6017/)
+
+
 
  !! Error covariance matrix of ERA5 specific humidity. [29,8]
  CovQw(1,:)=(/  2.25377153E-06, 6.82676387E-07, 3.90812573E-07, 2.35140632E-07, 1.74413401E-07, 1.45588956E-07,&
@@ -510,6 +539,9 @@ UTa(29,:)=(/0.987253,      0.0793131,   -0.0418795,   0.0881041,  0.0683952,    
 !! transform to Covars in EOF space
   CALL ProjCov(nEOF,nlevel,UQw,CovQw,LambdaQw)
   CALL ProjCov(nEOF,nlevel,UTa,CovTa,LambdaTa)
+  CALL ProjCov(10,10,Uem,CovEM,LambdaEM)
+  
+  ! CALL ProjCov(10,10,Uem,CovTB,LambdaTB)
 
 !! idealy, If Ta and Qw are all full rank, the eigenvalue diagnal matrix will be :
 !! these diagnal values are principle components of EOF space,  we gona use them as the error covariance matrix in EOF space.
@@ -538,12 +570,12 @@ Utotal=0.0
 Utotal(1:29,1:8)=UTa
 Utotal(30:58,9:16)=UQw
 Utotal(59:59,17:17)=1.0   !! LST
-Utotal(60:nG,18:26)=Uem   !! emissivity
+Utotal(60:68,18:26)=Uem   !! emissivity
 
 Lambda=0.0
 Lambda(1:8,1:8)=LambdaTA
 Lambda(9:16,9:16)=LambdaQW
-Lambda(17,17)=12.773  !! k*k   Stdev^2 
+Lambda(17,17)= 10.1370  !! k*k   Stdev^2 
 Lambda(18:26,18:26)=LambdaEM
 
 !!! perform a inital clear sky forward modeling to get the emissivity 1st guess, and analytical emissivity solution.
@@ -558,11 +590,14 @@ Xb=0.0
 Xb(1:nLayEff)=Tatm(1:nLayEff)
 Xb(nlevel+1:nlevel+nLayEff)=QWatm(1:nLayEff)
 Xb(nlevel+nlevel+1)=LstTune
-Xb(nlevel+nlevel+2:nlevel+nlevel+10)=EmissAnalyt
-Xg=Xb+0.01
+Xb(nlevel+nlevel+2:nlevel+nlevel+10)=Emiss1st
+Xg=Xb
 
 Ja=0.0
-
+print*,EmissAnalyt
+print*,Emiss1st
+print*,TBobs
+print*,"---"
 DO WHILE (.True.)
 	nIters=nIters+1
 
@@ -576,11 +611,13 @@ DO WHILE (.True.)
     ! Ja(:, 1:nLayEff)=Ta_K(:,1:nLayEff)
     ! Ja(:, nlevel+1:nlevel+nLayEff)=Qw_K(:,1:nLayEff)
     ! Ja(:, nlevel+nlevel+1)=LST_K
-	
+	print*, Xg(nlevel+nlevel+1)
+	! print*, Emss_K
+	print*,"---"
 	do ich=1,nchannel
 		Ja(nlevel+nlevel+1+ich, nlevel+nlevel+1+ich)=Emss_K(ich)
 	end do
-		
+		 ! Ja(:, 1:nlevel+nLayEff)=0.0
 	!! check for convergence 
 	CALL Convgce(nchannel,TBobs,TbTune,EY,ChiSq,CvgceReached,ChiSqThresh,dY2)
 	! print*, nIters, dY2
@@ -590,7 +627,7 @@ DO WHILE (.True.)
 
 	!! compute departures of Geoproperties
 	DX = Xg - Xb
-
+	
 	!---Transform K and DX into EOF space
 	Ktilda  = matmul(Ja,Utotal)
     DXtilda = matmul(transpose(Utotal),DX)
@@ -625,8 +662,8 @@ DO WHILE (.True.)
 	Xb=Xg
 	Xg = Xg + DX
 
-	print*, Xg(nlevel+nlevel+2:nlevel+nlevel+10)
-	print*, DX(nlevel+nlevel+2:nlevel+nlevel+10)
+	! print*, Xg(nlevel+nlevel+2:nlevel+nlevel+10)
+	! print*, DX(nlevel+nlevel+2:nlevel+nlevel+10)
 	
 	IF (nIters.ge.20) GOTO 221 
 END DO

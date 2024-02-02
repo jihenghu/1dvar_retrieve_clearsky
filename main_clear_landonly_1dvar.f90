@@ -67,8 +67,8 @@
   
  ! RTTOV
  ! INCLUDE 'rttov_fwd_clearsky.f90'
- INCLUDE 'retrieve_core_1dvar_lstem.f90'
- ! INCLUDE 'retrieve_core_1dvar.f90'
+ ! INCLUDE 'retrieve_core_1dvar_lstem.f90'
+ INCLUDE 'retrieve_core_1dvar.f90'
  ! INCLUDE 'rttov_fwd_jacobian.f90'
  
  
